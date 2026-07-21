@@ -1,0 +1,3232 @@
+<!doctype html>
+<html lang="zh-CN" data-visualize-standalone>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#1f4f46">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="城市治理">
+<meta name="format-detection" content="telephone=no">
+<meta name="description" content="以中国式虚构城市为背景的区域规划、经济、金融与政策模拟游戏。">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="./icons/icon-512.png">
+<link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
+<title>城市治理模拟</title>
+<style>
+@media (display-mode: standalone) {
+  html, body {
+    min-height: 100%;
+    overscroll-behavior: none;
+    width: 100%;
+  }
+  body {
+    padding-top: max(8px, env(safe-area-inset-top));
+    padding-right: max(8px, env(safe-area-inset-right));
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    padding-left: max(8px, env(safe-area-inset-left));
+  }
+}
+canvas { -webkit-touch-callout: none; }
+</style>
+<style>:root {
+  color-scheme: light dark;
+  background-color: transparent !important;
+
+  /* Agent-facing contract; keep in sync with SKILL.md. */
+  --background: var(
+    --main-surface-primary,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --foreground: light-dark(rgb(26 28 31), rgb(255 255 255));
+  --card: color-mix(in oklab, var(--foreground) 5%, transparent);
+  --card-foreground: var(--foreground);
+  --popover: light-dark(rgb(255 255 255), rgb(45 45 45));
+  --popover-foreground: var(--foreground);
+  --primary: light-dark(rgb(51 156 255), rgb(131 195 255));
+  --primary-foreground: light-dark(rgb(255 255 255), rgb(13 13 13));
+  --secondary: light-dark(rgb(255 255 255 / 96%), rgb(54 54 54 / 96%));
+  --secondary-foreground: var(--foreground);
+  --muted: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --muted-foreground: light-dark(
+    rgb(26 28 31 / 49.4%),
+    rgb(255 255 255 / 49.8%)
+  );
+  --accent: light-dark(rgb(229 242 255), rgb(13 39 63));
+  --accent-foreground: var(--primary);
+  --destructive: light-dark(rgb(226 85 7), rgb(255 133 73));
+  --border: light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%));
+  --input: light-dark(
+    rgb(26 28 31 / 11.8%),
+    color-mix(in oklab, rgb(0 0 0) 10%, transparent)
+  );
+  --ring: light-dark(rgb(51 156 255), rgb(131 195 255 / 76%));
+  --font-size-base: 14px;
+
+  /* Internal implementation variables; not part of the agent contract. */
+  --font-sans: -apple-system, system-ui, "Segoe UI", sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono",
+    monospace;
+  --font-size-normal: max(11px, var(--font-size-base));
+  --font-size-tooltip: calc(var(--font-size-base) - 1px);
+  --font-size-small: max(11px, calc(var(--font-size-base) - 2px));
+  --font-size-h1: calc(var(--font-size-normal) * 1.7142857143);
+  --font-size-h2: calc(var(--font-size-normal) * 1.4285714286);
+  --font-size-h3: calc(var(--font-size-normal) * 1.2857142857);
+  --font-weight-normal: 430;
+  --font-weight-medium: 500;
+  --line-height-normal: calc(var(--font-size-normal) * 1.5);
+  --line-height-tooltip: calc(var(--font-size-tooltip) * 1.4285714286);
+  --line-height-small: calc(var(--font-size-small) + 4px);
+  --radius: 10px;
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-2xl: calc(var(--radius) * 1.6);
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px -1px rgb(0 0 0 / 8%);
+  --checkmark-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 17 17'%3E%3Cpath d='M12.8961 3.64101C13.1297 3.41418 13.4984 3.37523 13.7779 3.56581C14.0571 3.75635 14.1554 4.11331 14.0299 4.41347L13.9615 4.53847L7.71151 13.7045C7.59411 13.8767 7.4063 13.9877 7.19881 14.0072C6.99136 14.0267 6.78564 13.9533 6.63826 13.806L2.88826 10.056L2.79842 9.9457C2.6192 9.67407 2.64927 9.30496 2.88826 9.06581C3.12738 8.82669 3.49647 8.79676 3.76815 8.97597L3.8785 9.06581L7.03084 12.2182L12.8053 3.74941L12.8961 3.64101Z'/%3E%3C/svg%3E");
+
+  /* Legacy aliases; not part of the current agent contract. */
+  --viz-bg: transparent;
+  --viz-panel: var(--card);
+  --viz-border: var(--border);
+  --viz-text: var(--foreground);
+  --viz-muted: var(--muted-foreground);
+  --viz-accent: var(--primary);
+  --viz-accent-text: var(--primary-foreground);
+  --viz-accent-bg: var(--accent);
+  --viz-font-size: var(--font-size-base);
+  --viz-warning: var(--destructive);
+  --color-background-primary: var(--background);
+  --color-text-primary: var(--foreground);
+  --color-border-secondary: var(--border);
+}
+
+:root[data-visualize-standalone] {
+  background-color: var(--background) !important;
+}
+
+/* Generic mobile code-block hosts provide light/dark mode but no series palette.
+   AppBlock hosts set all six variables themselves. */
+:root:not([data-app-block-surface]) {
+  --viz-series-1: var(--primary);
+  --viz-series-2: light-dark(#f3883b, #f59a56);
+  --viz-series-3: light-dark(#5dc977, #74d58b);
+  --viz-series-4: light-dark(#eb77b1, #f08fc0);
+  --viz-series-5: light-dark(#9b79ec, #aa91ef);
+  --viz-series-6: light-dark(#3ab9b1, #5acbc2);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html > body {
+  margin: 0;
+  padding: 5px;
+  color: var(--foreground);
+  background: transparent !important;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-normal);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-normal);
+}
+
+:root:not([data-app-block-surface]) > body {
+  padding: 12px;
+}
+
+a {
+  color: color-mix(in srgb, var(--viz-accent) 80%, var(--viz-text) 20%);
+  cursor: pointer;
+  font-weight: var(--viz-font-weight-medium);
+  text-decoration: none;
+  text-underline-offset: 2px;
+}
+
+a:is(:hover, :focus-visible) {
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-thickness: 0.5px;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin-block: 0;
+}
+
+h1 {
+  font-size: var(--font-size-h1);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h2 {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h3,
+h4,
+h5,
+h6 {
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.3;
+}
+
+b,
+strong,
+th {
+  font-weight: var(--font-weight-medium);
+}
+
+code:not(pre code) {
+  display: inline;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  word-break: break-word;
+}
+
+#widget {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  background: transparent !important;
+}
+
+.card {
+  min-width: 0;
+  padding: 12px;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  border-radius: var(--radius-2xl);
+  color: var(--card-foreground);
+  background: var(--card);
+}
+
+#widget > :not(.card) {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 50;
+  top: 0;
+  left: 0;
+  width: max-content;
+  max-width: min(
+    20rem,
+    var(--tooltip-available-width, calc(100vw - 10px)),
+    calc(100vw - 10px)
+  );
+  max-height: min(
+    var(--tooltip-available-height, calc(100vh - 10px)),
+    calc(100vh - 10px)
+  );
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  color: var(--popover-foreground);
+  background: var(--popover);
+  box-shadow: none;
+  font-size: var(--font-size-tooltip);
+  line-height: var(--line-height-tooltip);
+  overflow-wrap: break-word;
+  white-space: normal;
+  pointer-events: none;
+  user-select: none;
+}
+
+.viz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(max(180px, 24%), 1fr));
+  gap: 10px;
+}
+
+.viz-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.viz-stat-value {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+.viz-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.viz-badge {
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  color: var(--accent-foreground);
+  background: var(--accent);
+  font-weight: var(--font-weight-medium);
+}
+
+small,
+.text-small,
+.viz-badge {
+  font-size: var(--font-size-small);
+  line-height: var(--line-height-small);
+}
+
+.text-muted {
+  color: var(--muted-foreground);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.viz-legend,
+.viz-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.viz-controls > .form-label {
+  display: grid;
+  min-width: min(100%, 260px);
+  flex: 1 1 280px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin-bottom: 0;
+}
+
+.viz-controls > .form-label > :is(.form-control, .form-range, .form-select) {
+  grid-column: 1 / -1;
+}
+
+.btn,
+.form-check-input,
+.form-control,
+.form-range,
+.form-select {
+  font: inherit;
+}
+
+.btn {
+  appearance: button;
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0 8px;
+  -webkit-app-region: no-drag;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: var(--cursor-interaction, pointer);
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+a.btn {
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn-primary {
+  border-color: transparent;
+  color: var(--primary-foreground);
+  background: var(--foreground);
+  background-clip: padding-box;
+}
+
+.btn-primary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 80%, transparent);
+  background-clip: padding-box;
+}
+
+.btn-ghost {
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.btn-ghost:not(:disabled):hover {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+[data-lucide] {
+  stroke-width: 1.6;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--foreground);
+}
+
+.form-control {
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  color: var(--foreground);
+  background: var(--secondary);
+}
+
+.form-control::placeholder {
+  color: var(--muted-foreground);
+}
+
+textarea.form-control {
+  height: auto;
+  min-height: 72px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.form-control:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-control:disabled,
+.form-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.form-select {
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  margin: 0;
+  padding: 0 32px 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  color: var(--foreground);
+  background-color: var(--secondary);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted-foreground) 50%),
+    linear-gradient(135deg, var(--muted-foreground) 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) 50%,
+    calc(100% - 10px) 50%;
+  background-repeat: no-repeat;
+  background-size: 4px 4px;
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-select:not(:disabled):hover {
+  background-color: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-select:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-check {
+  display: flex;
+  min-height: 20px;
+  align-items: center;
+  gap: 6px;
+}
+
+.form-check-input {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  margin: 0;
+  border: 1px solid var(--input);
+  color: var(--primary-foreground);
+  background-color: transparent;
+  cursor: var(--cursor-interaction, default);
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    box-shadow 150ms;
+}
+
+.form-check:not(.form-switch) .form-check-input[type="checkbox"] {
+  border-color: var(--input);
+  border-radius: var(--radius-sm);
+  background-color: var(--secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input:not(:disabled):not(:checked):hover {
+  background-color: var(--card);
+}
+
+.form-check:not(.form-switch) .form-check-input[type="checkbox"]:checked {
+  border-color: var(--primary);
+  background-color: var(--primary);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input[type="checkbox"]:checked::before {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--primary-foreground);
+  content: "";
+  mask: var(--checkmark-image) center / 12px 12px no-repeat;
+}
+
+.form-check-input[type="radio"] {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+}
+
+.form-check-input[type="radio"]:checked {
+  border: 2px solid var(--primary);
+  background:
+    radial-gradient(circle, var(--primary-foreground) 0 2.5px, transparent 3px),
+    var(--primary);
+}
+
+.form-check:not(.form-switch) .form-check-input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+}
+
+.form-switch .form-check-input:disabled,
+.form-switch .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-check-label {
+  color: var(--foreground);
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-switch .form-check-input {
+  position: relative;
+  width: 32px;
+  height: 20px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+  box-shadow: none;
+  transition: background-color 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 1px solid light-dark(var(--primary-foreground), var(--foreground));
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+  box-shadow: var(--shadow-sm);
+  content: "";
+  transform: translate(2px, -50%);
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input:checked {
+  background: var(--primary);
+}
+
+.form-switch .form-check-input:checked::before {
+  transform: translate(14px, -50%);
+}
+
+.form-switch .form-check-input:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.form-range {
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 28px;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  outline: none;
+  border: 0;
+  accent-color: var(--primary);
+  background: linear-gradient(
+      color-mix(in srgb, var(--foreground) 7%, transparent),
+      color-mix(in srgb, var(--foreground) 7%, transparent)
+    )
+    center / 100% 2px no-repeat;
+}
+
+.form-range::-webkit-slider-runnable-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-webkit-slider-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range::-moz-range-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-moz-range-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.btn:not(.btn-primary, .viz-tile):is(
+    [aria-pressed="true"],
+    [aria-selected="true"],
+    .is-selected
+  ) {
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+  background: var(--primary);
+}
+
+.btn.viz-tile:is([aria-pressed="true"], [aria-selected="true"], .is-selected) {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+#widget > svg {
+  width: 100%;
+}
+
+.text-warning,
+.text-destructive {
+  color: var(--destructive);
+}
+</style>
+</head>
+<body>
+<div id="city-governance-sim" class="cg-root">
+  <style>
+    #city-governance-sim {
+      --cg-panel-width: 336px;
+      color: var(--foreground);
+      min-height: 760px;
+      width: 100%;
+    }
+    #city-governance-sim * { box-sizing: border-box; }
+    #city-governance-sim .cg-shell {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: 10px;
+      min-height: 760px;
+    }
+    #city-governance-sim .cg-topbar {
+      align-items: center;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      display: flex;
+      gap: 12px;
+      justify-content: space-between;
+      padding: 10px 12px;
+    }
+    #city-governance-sim .cg-cityline {
+      display: flex;
+      flex-direction: column;
+      min-width: 150px;
+    }
+    #city-governance-sim .cg-cityname { font-weight: 500; }
+    #city-governance-sim .cg-period { color: var(--muted-foreground); }
+    #city-governance-sim .cg-metrics {
+      align-items: center;
+      display: flex;
+      flex: 1;
+      gap: 14px;
+      justify-content: center;
+      min-width: 0;
+    }
+    #city-governance-sim .cg-metric {
+      display: flex;
+      flex-direction: column;
+      min-width: 74px;
+    }
+    #city-governance-sim .cg-metric-label {
+      color: var(--muted-foreground);
+      white-space: nowrap;
+    }
+    #city-governance-sim .cg-metric-value {
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    #city-governance-sim .cg-top-actions {
+      align-items: center;
+      display: flex;
+      gap: 6px;
+    }
+    #city-governance-sim .cg-main {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: minmax(0, 1fr) var(--cg-panel-width);
+      min-height: 690px;
+    }
+    #city-governance-sim .cg-map-column {
+      display: grid;
+      gap: 8px;
+      grid-template-rows: auto minmax(520px, 1fr) auto;
+      min-width: 0;
+    }
+    #city-governance-sim .cg-toolbar {
+      align-items: center;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: space-between;
+      padding: 7px 8px;
+    }
+    #city-governance-sim .cg-toolbar-group {
+      align-items: center;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    #city-governance-sim .cg-map-wrap {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      min-height: 520px;
+      overflow: hidden;
+      position: relative;
+    }
+    #city-governance-sim canvas {
+      display: block;
+      height: 100%;
+      min-height: 520px;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      width: 100%;
+    }
+    #city-governance-sim .cg-map-status {
+      background: color-mix(in srgb, var(--card) 88%, transparent);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      left: 10px;
+      max-width: min(300px, calc(100% - 20px));
+      padding: 7px 9px;
+      pointer-events: none;
+      position: absolute;
+      top: 10px;
+    }
+    #city-governance-sim .cg-map-status strong { display: block; font-weight: 500; }
+    #city-governance-sim .cg-map-status span { color: var(--muted-foreground); }
+    #city-governance-sim .cg-legend {
+      align-items: center;
+      background: color-mix(in srgb, var(--card) 88%, transparent);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      bottom: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      left: 10px;
+      padding: 6px 8px;
+      pointer-events: none;
+      position: absolute;
+    }
+    #city-governance-sim .cg-legend-item {
+      align-items: center;
+      display: inline-flex;
+      gap: 4px;
+    }
+    #city-governance-sim .cg-swatch {
+      background: var(--swatch);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      height: 10px;
+      width: 10px;
+    }
+    #city-governance-sim .cg-events {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      display: grid;
+      gap: 8px;
+      grid-template-columns: auto 1fr;
+      min-height: 56px;
+      padding: 8px 10px;
+    }
+    #city-governance-sim .cg-event-title {
+      align-items: center;
+      color: var(--muted-foreground);
+      display: flex;
+      white-space: nowrap;
+    }
+    #city-governance-sim .cg-event-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+    #city-governance-sim .cg-event-row {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    #city-governance-sim .cg-panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      min-height: 0;
+      overflow: hidden;
+    }
+    #city-governance-sim .cg-tabs {
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 2px;
+      overflow-x: auto;
+      padding: 7px;
+    }
+    #city-governance-sim .cg-panel-content {
+      min-height: 0;
+      overflow-y: auto;
+      padding: 12px;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+    #city-governance-sim .cg-section {
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 14px;
+      padding-bottom: 14px;
+    }
+    #city-governance-sim .cg-section:last-child {
+      border-bottom: 0;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+    #city-governance-sim .cg-section-title {
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+    #city-governance-sim .cg-subtle { color: var(--muted-foreground); }
+    #city-governance-sim .cg-kv {
+      display: grid;
+      gap: 6px 10px;
+      grid-template-columns: 1fr auto;
+      margin: 8px 0;
+    }
+    #city-governance-sim .cg-kv > :nth-child(even) { font-weight: 500; text-align: right; }
+    #city-governance-sim .cg-field { margin-bottom: 12px; }
+    #city-governance-sim .cg-field-head {
+      align-items: center;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+    #city-governance-sim .cg-range-value { color: var(--muted-foreground); }
+    #city-governance-sim .cg-inline-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+    #city-governance-sim .cg-bank-row,
+    #city-governance-sim .cg-cadre-row,
+    #city-governance-sim .cg-project-row {
+      border-bottom: 1px solid var(--border);
+      padding: 9px 0;
+    }
+    #city-governance-sim .cg-bank-row:last-child,
+    #city-governance-sim .cg-cadre-row:last-child,
+    #city-governance-sim .cg-project-row:last-child { border-bottom: 0; }
+    #city-governance-sim .cg-row-head {
+      align-items: center;
+      display: flex;
+      gap: 8px;
+      justify-content: space-between;
+    }
+    #city-governance-sim .cg-bars {
+      display: grid;
+      gap: 4px;
+      margin-top: 6px;
+    }
+    #city-governance-sim .cg-bar-line {
+      align-items: center;
+      display: grid;
+      gap: 6px;
+      grid-template-columns: 56px 1fr 34px;
+    }
+    #city-governance-sim .cg-bar {
+      background: var(--muted);
+      border-radius: 999px;
+      height: 6px;
+      overflow: hidden;
+    }
+    #city-governance-sim .cg-bar > span {
+      background: var(--viz-series-1);
+      display: block;
+      height: 100%;
+      width: var(--bar-width);
+    }
+    #city-governance-sim .cg-warning { color: var(--destructive); }
+    #city-governance-sim .cg-positive { color: var(--foreground); }
+    #city-governance-sim .cg-toast {
+      background: var(--popover);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      bottom: 12px;
+      color: var(--popover-foreground);
+      left: 50%;
+      max-width: calc(100% - 24px);
+      opacity: 0;
+      padding: 8px 10px;
+      pointer-events: none;
+      position: absolute;
+      transform: translate(-50%, 8px);
+      transition: opacity 160ms ease, transform 160ms ease;
+      z-index: 4;
+    }
+    #city-governance-sim .cg-toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
+    @media (pointer: coarse) {
+      #city-governance-sim button,
+      #city-governance-sim select {
+        min-height: 44px;
+      }
+      #city-governance-sim input[type="range"] {
+        min-height: 36px;
+      }
+      #city-governance-sim .cg-tabs { gap: 5px; }
+      #city-governance-sim .cg-toolbar { padding: 9px; }
+      #city-governance-sim .cg-panel-content { padding: 14px; }
+    }
+    @media (display-mode: standalone) {
+      #city-governance-sim {
+        min-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+      }
+      #city-governance-sim .cg-shell {
+        min-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+      }
+    }
+    @media (pointer: coarse) and (orientation: landscape) and (min-width: 921px) {
+      #city-governance-sim { --cg-panel-width: 360px; }
+      #city-governance-sim .cg-main { min-height: 620px; }
+      #city-governance-sim .cg-map-column { grid-template-rows: auto minmax(480px, 1fr) auto; }
+      #city-governance-sim .cg-map-wrap,
+      #city-governance-sim canvas { min-height: 480px; }
+    }
+    @media (max-width: 920px) {
+      #city-governance-sim .cg-main { grid-template-columns: 1fr; }
+      #city-governance-sim .cg-panel { min-height: 520px; }
+      #city-governance-sim .cg-metrics { justify-content: flex-start; overflow-x: auto; }
+      #city-governance-sim .cg-topbar { align-items: flex-start; flex-wrap: wrap; }
+    }
+    @media (max-width: 560px) {
+      #city-governance-sim .cg-top-actions { width: 100%; }
+      #city-governance-sim .cg-map-column { grid-template-rows: auto 500px auto; }
+      #city-governance-sim .cg-map-wrap,
+      #city-governance-sim canvas { min-height: 500px; }
+      #city-governance-sim .cg-events { grid-template-columns: 1fr; }
+    }
+  </style>
+
+  <div class="cg-shell">
+    <header class="cg-topbar">
+      <div class="cg-cityline">
+        <span class="cg-cityname" data-bind="city-name">青岚市</span>
+        <span class="cg-period text-small" data-bind="period">第1年 · 第1周</span>
+      </div>
+      <div class="cg-metrics" aria-label="城市关键指标">
+        <div class="cg-metric"><span class="cg-metric-label text-small">常住人口</span><span class="cg-metric-value" data-bind="population">—</span></div>
+        <div class="cg-metric"><span class="cg-metric-label text-small">地区生产总值</span><span class="cg-metric-value" data-bind="gdp">—</span></div>
+        <div class="cg-metric"><span class="cg-metric-label text-small">财政资金</span><span class="cg-metric-value" data-bind="funds">—</span></div>
+        <div class="cg-metric"><span class="cg-metric-label text-small">调查失业率</span><span class="cg-metric-value" data-bind="unemployment">—</span></div>
+        <div class="cg-metric"><span class="cg-metric-label text-small">任期评价</span><span class="cg-metric-value" data-bind="evaluation">—</span></div>
+      </div>
+      <div class="cg-top-actions">
+        <button type="button" class="btn btn-ghost" data-action="save"><i data-lucide="save" aria-hidden="true"></i>保存</button>
+        <button type="button" class="btn btn-ghost" data-action="load"><i data-lucide="folder-open" aria-hidden="true"></i>读取</button>
+      </div>
+    </header>
+
+    <div class="cg-main">
+      <section class="cg-map-column" aria-label="市域规划地图">
+        <div class="cg-toolbar">
+          <div class="cg-toolbar-group">
+            <button type="button" class="btn btn-primary" data-action="toggle-run" aria-pressed="false"><i data-lucide="play" aria-hidden="true"></i><span data-bind="run-label">开始运行</span></button>
+            <button type="button" class="btn" data-action="speed" data-speed="1" aria-pressed="true">1×</button>
+            <button type="button" class="btn" data-action="speed" data-speed="4" aria-pressed="false">4×</button>
+            <button type="button" class="btn" data-action="speed" data-speed="12" aria-pressed="false">12×</button>
+          </div>
+          <div class="cg-toolbar-group">
+            <label class="form-label" for="cg-overlay">地图图层</label>
+            <select id="cg-overlay" class="form-select" data-action="overlay">
+              <option value="use">土地用途</option>
+              <option value="population">人口密度</option>
+              <option value="economy">经济活力</option>
+              <option value="pollution">环境压力</option>
+              <option value="services">公共服务</option>
+            </select>
+            <button type="button" class="btn btn-ghost" data-action="reset-view" data-tooltip="重置地图视角"><i data-lucide="scan" aria-hidden="true"></i>复位</button>
+            <button type="button" class="btn btn-ghost" data-action="new-city"><i data-lucide="refresh-cw" aria-hidden="true"></i>新城市</button>
+          </div>
+        </div>
+
+        <div class="cg-map-wrap">
+          <canvas data-role="map" role="img" aria-label="青岚市市域规划地图，可拖动、滚轮缩放并选择区块"></canvas>
+          <div class="cg-map-status text-small" data-role="map-status"><strong>选择一个规划区块</strong><span>拖动地图，滚轮缩放</span></div>
+          <div class="cg-legend text-small" data-role="legend"></div>
+          <div class="cg-toast" role="status" aria-live="polite" data-role="toast"></div>
+        </div>
+
+        <div class="cg-events">
+          <div class="cg-event-title text-small">最近动态</div>
+          <div class="cg-event-list text-small" data-role="events"></div>
+        </div>
+      </section>
+
+      <aside class="cg-panel" aria-label="治理决策面板">
+        <nav class="cg-tabs" aria-label="治理模块">
+          <button type="button" class="btn btn-ghost" data-tab="planning" aria-pressed="true">规划</button>
+          <button type="button" class="btn btn-ghost" data-tab="policy" aria-pressed="false">政策</button>
+          <button type="button" class="btn btn-ghost" data-tab="projects" aria-pressed="false">项目</button>
+          <button type="button" class="btn btn-ghost" data-tab="finance" aria-pressed="false">金融</button>
+          <button type="button" class="btn btn-ghost" data-tab="cadres" aria-pressed="false">干部</button>
+        </nav>
+        <div class="cg-panel-content" data-role="panel"></div>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const root = document.getElementById("city-governance-sim");
+      if (!root) return;
+
+      const canvas = root.querySelector('[data-role="map"]');
+      const ctx = canvas.getContext("2d");
+      const panelEl = root.querySelector('[data-role="panel"]');
+      const eventsEl = root.querySelector('[data-role="events"]');
+      const statusEl = root.querySelector('[data-role="map-status"]');
+      const legendEl = root.querySelector('[data-role="legend"]');
+      const toastEl = root.querySelector('[data-role="toast"]');
+
+      const USES = {
+        mixed: { label: "综合中心", series: 5, urban: true, housing: 0.55, jobs: 0.72 },
+        residential: { label: "居住片区", series: 1, urban: true, housing: 1, jobs: 0.18 },
+        commercial: { label: "商业服务", series: 4, urban: true, housing: 0.18, jobs: 1 },
+        industrial: { label: "工业生产", series: 3, urban: true, housing: 0.05, jobs: 1 },
+        logistics: { label: "物流仓储", series: 6, urban: true, housing: 0.04, jobs: 0.82 },
+        science: { label: "科教研发", series: 2, urban: true, housing: 0.25, jobs: 0.9 },
+        agriculture: { label: "农业乡镇", series: 2, urban: false, housing: 0.46, jobs: 0.42 },
+        ecological: { label: "生态保护", series: 6, urban: false, housing: 0.04, jobs: 0.05 }
+      };
+
+      const SECTORS = {
+        manufacturing: { label: "制造业", margin: 0.16, skill: 1.05, pollution: 1, export: 0.62, uses: ["industrial", "logistics"] },
+        construction: { label: "建筑业", margin: 0.12, skill: 0.9, pollution: 0.55, export: 0.05, uses: ["mixed", "industrial", "residential"] },
+        realestate: { label: "房地产业", margin: 0.2, skill: 1.12, pollution: 0.12, export: 0, uses: ["commercial", "mixed"] },
+        commerce: { label: "商贸服务", margin: 0.14, skill: 0.92, pollution: 0.12, export: 0.08, uses: ["commercial", "mixed", "residential"] },
+        logistics: { label: "物流业", margin: 0.13, skill: 0.95, pollution: 0.46, export: 0.42, uses: ["logistics", "industrial"] },
+        technology: { label: "科技产业", margin: 0.24, skill: 1.62, pollution: 0.08, export: 0.48, uses: ["science", "commercial", "mixed"] },
+        finance: { label: "金融业", margin: 0.26, skill: 1.48, pollution: 0.02, export: 0.1, uses: ["commercial", "mixed"] },
+        public: { label: "公共服务", margin: 0.06, skill: 1.18, pollution: 0.03, export: 0, uses: ["mixed", "residential", "science"] }
+      };
+
+      const PROJECTS = {
+        school: { label: "学校", cost: 8, weeks: 42, service: "education", capacity: 9 },
+        hospital: { label: "综合医院", cost: 18, weeks: 68, service: "health", capacity: 11 },
+        sewage: { label: "污水处理厂", cost: 14, weeks: 54, service: "sewage", capacity: 15 },
+        power: { label: "能源保障设施", cost: 24, weeks: 76, service: "utilities", capacity: 13 },
+        transit: { label: "综合交通枢纽", cost: 20, weeks: 64, service: "access", capacity: 12 }
+      };
+
+      const POLICY_META = {
+        policyRate: { label: "城市政策利率", min: 0, max: 12, step: 0.1, unit: "%" },
+        reserveRatio: { label: "存款准备金率", min: 0, max: 25, step: 0.5, unit: "%" },
+        localTax: { label: "地方综合税费率", min: 5, max: 25, step: 0.5, unit: "%" },
+        industrialSubsidy: { label: "产业扶持强度", min: 0, max: 15, step: 0.5, unit: "%" },
+        welfare: { label: "民生支出强度", min: 0, max: 100, step: 1, unit: "" },
+        environment: { label: "环保监管强度", min: 0, max: 100, step: 1, unit: "" },
+        landSupply: { label: "建设用地供给", min: 0, max: 100, step: 1, unit: "" },
+        financialReg: { label: "金融监管强度", min: 0, max: 100, step: 1, unit: "" },
+        settlement: { label: "人口落户开放度", min: 0, max: 100, step: 1, unit: "" },
+        publicInvestment: { label: "政府投资强度", min: 0, max: 100, step: 1, unit: "" }
+      };
+
+      const CITY_NAMES = ["青岚市", "沅川市", "澄岳市", "临江市", "衡原市", "栖河市", "宁川市", "广陵市"];
+      const ZONE_PREFIX = ["东浦", "西岭", "南河", "北城", "临江", "青石", "新港", "云台", "松林", "长桥", "金泉", "安平", "柳溪", "兴业", "清源", "望山", "白沙", "丰谷", "石桥", "龙湾", "锦川", "高新", "新城", "老城", "河东", "河西", "南郊", "北郊", "临港", "经开", "茶山", "平湖", "双河", "东山", "西河", "槐安", "秀峰", "翠屏", "柏林", "云河", "向阳", "黎明", "团结", "永兴", "长宁", "新安", "丰宁", "南浦"];
+      const SURNAMES = ["周", "陆", "沈", "梁", "林", "许", "贺", "宋", "顾", "程", "魏", "韩", "邵", "叶", "潘", "杜", "唐", "罗"];
+      const GIVEN = ["明远", "致衡", "景川", "文清", "思齐", "嘉禾", "宁远", "承安", "书林", "正源", "怀瑾", "若川", "知行", "修远", "清和", "宏毅"];
+      const DEPARTMENTS = [
+        { id: "development", label: "发展改革部门" },
+        { id: "finance", label: "财政部门" },
+        { id: "housing", label: "住建部门" },
+        { id: "financial", label: "地方金融部门" },
+        { id: "social", label: "教育卫健部门" },
+        { id: "environment", label: "生态环境部门" }
+      ];
+
+      const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+      const lerp = (a, b, t) => a + (b - a) * t;
+      const sum = (array, getter) => array.reduce((total, item) => total + getter(item), 0);
+      const average = (array, getter) => array.length ? sum(array, getter) / array.length : 0;
+      const formatPopulation = value => value >= 10000 ? `${(value / 10000).toFixed(value >= 1000000 ? 1 : 2)}万` : Math.round(value).toLocaleString("zh-CN");
+      const formatMoney = value => `${value.toFixed(Math.abs(value) >= 100 ? 0 : 1)}亿元`;
+      const formatPercent = value => `${value.toFixed(1)}%`;
+      const hashNumber = value => {
+        let x = value | 0;
+        x = Math.imul(x ^ (x >>> 16), 0x45d9f3b);
+        x = Math.imul(x ^ (x >>> 16), 0x45d9f3b);
+        return (x ^ (x >>> 16)) >>> 0;
+      };
+      const hashUnit = value => hashNumber(value) / 4294967295;
+
+      class RNG {
+        constructor(seed) { this.state = (seed >>> 0) || 0x9e3779b9; }
+        next() {
+          let x = this.state;
+          x ^= x << 13;
+          x ^= x >>> 17;
+          x ^= x << 5;
+          this.state = x >>> 0;
+          return this.state / 4294967296;
+        }
+        range(min, max) { return min + (max - min) * this.next(); }
+        int(min, max) { return Math.floor(this.range(min, max + 1)); }
+        pick(array) { return array[Math.floor(this.next() * array.length)]; }
+      }
+
+      const smoothStep = value => value * value * (3 - 2 * value);
+      function valueNoise(seed, x, y) {
+        const x0 = Math.floor(x);
+        const y0 = Math.floor(y);
+        const tx = smoothStep(x - x0);
+        const ty = smoothStep(y - y0);
+        const at = (ix, iy) => hashUnit(seed + Math.imul(ix, 374761393) + Math.imul(iy, 668265263));
+        const a = lerp(at(x0, y0), at(x0 + 1, y0), tx);
+        const b = lerp(at(x0, y0 + 1), at(x0 + 1, y0 + 1), tx);
+        return lerp(a, b, ty);
+      }
+
+      function fbm(seed, x, y) {
+        let value = 0;
+        let amplitude = 0.58;
+        let frequency = 1;
+        let total = 0;
+        for (let octave = 0; octave < 4; octave += 1) {
+          value += valueNoise(seed + octave * 8191, x * frequency, y * frequency) * amplitude;
+          total += amplitude;
+          amplitude *= 0.5;
+          frequency *= 2;
+        }
+        return value / total;
+      }
+
+      function hexPolygon(x, y, size) {
+        const points = [];
+        for (let i = 0; i < 6; i += 1) {
+          const angle = Math.PI / 180 * (60 * i - 30);
+          points.push({ x: x + size * Math.cos(angle), y: y + size * Math.sin(angle) });
+        }
+        return points;
+      }
+
+      function pointInPolygon(x, y, polygon) {
+        let inside = false;
+        for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+          const xi = polygon[i].x;
+          const yi = polygon[i].y;
+          const xj = polygon[j].x;
+          const yj = polygon[j].y;
+          const intersects = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / ((yj - yi) || 0.00001) + xi);
+          if (intersects) inside = !inside;
+        }
+        return inside;
+      }
+
+      function weightedPick(rng, items, weightGetter) {
+        const total = sum(items, weightGetter);
+        if (total <= 0) return rng.pick(items);
+        let cursor = rng.range(0, total);
+        for (const item of items) {
+          cursor -= weightGetter(item);
+          if (cursor <= 0) return item;
+        }
+        return items[items.length - 1];
+      }
+
+      function chooseInitialUse(zone, center, rng) {
+        const distance = Math.hypot(zone.x - center.x, zone.y - center.y);
+        if (zone.elevation > 0.72 && zone.resource < 0.72) return "ecological";
+        if (zone.resource > 0.76) return rng.next() < 0.72 ? "industrial" : "logistics";
+        if (distance < 75) return rng.next() < 0.62 ? "mixed" : "commercial";
+        if (distance < 150) {
+          const roll = rng.next();
+          if (roll < 0.48) return "residential";
+          if (roll < 0.69) return "mixed";
+          if (roll < 0.83) return "industrial";
+          return "science";
+        }
+        if (zone.moisture > 0.62 && zone.elevation < 0.58) return "agriculture";
+        return rng.next() < 0.42 ? "agriculture" : rng.next() < 0.5 ? "ecological" : "industrial";
+      }
+
+      function generateMap(seed) {
+        const rng = new RNG(seed ^ 0x85ebca6b);
+        const cols = 34;
+        const rows = 23;
+        const size = 17;
+        const width = Math.sqrt(3) * size * (cols + 0.5);
+        const height = size * (1.5 * (rows - 1) + 2);
+        const riverPhase = rng.range(0, Math.PI * 2);
+        const cells = [];
+
+        for (let row = 0; row < rows; row += 1) {
+          for (let col = 0; col < cols; col += 1) {
+            const x = Math.sqrt(3) * size * (col + 0.5 * (row & 1)) + size;
+            const y = size * (1.5 * row + 1);
+            const elevation = clamp(fbm(seed, col / 9, row / 8) * 1.2 - 0.08 + row / rows * 0.08, 0, 1);
+            const moisture = clamp(fbm(seed + 911, col / 8, row / 7), 0, 1);
+            const riverRow = rows * 0.52 + Math.sin(col * 0.31 + riverPhase) * 1.25 + Math.sin(col * 0.09 + riverPhase * 0.7) * 1.4;
+            const riverDistance = Math.abs(row - riverRow);
+            const water = riverDistance < (0.38 + moisture * 0.24);
+            const resourceNoise = fbm(seed + 1777, col / 5, row / 5);
+            const resource = clamp((resourceNoise - 0.58) * 2.6 + elevation * 0.35, 0, 1);
+            cells.push({
+              id: row * cols + col,
+              col,
+              row,
+              x,
+              y,
+              elevation,
+              moisture,
+              riverSide: Math.sign(row - riverRow),
+              water,
+              resource,
+              zoneId: -1,
+              polygon: hexPolygon(x, y, size + 0.35)
+            });
+          }
+        }
+
+        const landCells = cells.filter(cell => !cell.water);
+        const seedCells = [];
+        const desiredZones = 44;
+        const candidates = [...landCells];
+        for (let i = candidates.length - 1; i > 0; i -= 1) {
+          const j = rng.int(0, i);
+          [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+        }
+        for (const cell of candidates) {
+          if (seedCells.length >= desiredZones) break;
+          const farEnough = seedCells.every(other => Math.hypot(cell.x - other.x, cell.y - other.y) > size * 2.7);
+          if (farEnough) seedCells.push(cell);
+        }
+        while (seedCells.length < desiredZones) seedCells.push(landCells[rng.int(0, landCells.length - 1)]);
+
+        for (const cell of landCells) {
+          let bestId = 0;
+          let bestCost = Infinity;
+          for (let index = 0; index < seedCells.length; index += 1) {
+            const candidate = seedCells[index];
+            const dx = cell.x - candidate.x;
+            const dy = cell.y - candidate.y;
+            const riverPenalty = cell.riverSide !== candidate.riverSide ? size * size * 18 : 0;
+            const elevationPenalty = Math.abs(cell.elevation - candidate.elevation) * size * size * 7;
+            const cost = dx * dx + dy * dy + riverPenalty + elevationPenalty;
+            if (cost < bestCost) {
+              bestCost = cost;
+              bestId = index;
+            }
+          }
+          cell.zoneId = bestId;
+        }
+
+        const zones = seedCells.map((cell, id) => ({
+          id,
+          name: `${ZONE_PREFIX[id % ZONE_PREFIX.length]}片区`,
+          cellIds: [],
+          x: 0,
+          y: 0,
+          elevation: 0,
+          moisture: 0,
+          resource: 0,
+          area: 0,
+          use: "agriculture",
+          intensity: 1,
+          development: 0.1,
+          population: 0,
+          jobs: 0,
+          housingCapacity: 0,
+          landPrice: 0,
+          pollution: 0,
+          services: { education: 32, health: 32, sewage: 38, utilities: 55, access: 42 },
+          projects: [],
+          output: 0,
+          vacancy: 0.08
+        }));
+
+        for (const cell of landCells) {
+          const zone = zones[cell.zoneId];
+          zone.cellIds.push(cell.id);
+          zone.x += cell.x;
+          zone.y += cell.y;
+          zone.elevation += cell.elevation;
+          zone.moisture += cell.moisture;
+          zone.resource += cell.resource;
+        }
+
+        for (const zone of zones) {
+          const count = Math.max(1, zone.cellIds.length);
+          zone.x /= count;
+          zone.y /= count;
+          zone.elevation /= count;
+          zone.moisture /= count;
+          zone.resource /= count;
+          zone.area = count * 2.1;
+        }
+
+        const centerCell = landCells.reduce((best, cell) => {
+          const score = Math.hypot(cell.x - width * 0.5, cell.y - height * 0.5) + cell.elevation * 90;
+          return !best || score < best.score ? { cell, score } : best;
+        }, null).cell;
+        const center = { x: centerCell.x, y: centerCell.y };
+
+        for (const zone of zones) {
+          zone.use = chooseInitialUse(zone, center, rng);
+          const distance = Math.hypot(zone.x - center.x, zone.y - center.y);
+          zone.intensity = USES[zone.use].urban ? clamp(Math.round(4.7 - distance / 72 + rng.range(-0.8, 0.8)), 1, 5) : 1;
+          zone.development = USES[zone.use].urban ? clamp(0.78 - distance / 580 + rng.range(-0.1, 0.1), 0.22, 0.86) : rng.range(0.08, 0.24);
+          zone.landPrice = USES[zone.use].urban ? clamp(4.2 - distance / 85 + rng.range(-0.5, 0.7), 0.9, 6.5) : rng.range(0.15, 0.75);
+          zone.housingCapacity = zone.area * 4200 * zone.intensity * USES[zone.use].housing * Math.max(0.35, zone.development);
+          zone.services.education += USES[zone.use].urban ? rng.range(6, 20) : rng.range(-5, 5);
+          zone.services.health += USES[zone.use].urban ? rng.range(4, 18) : rng.range(-5, 4);
+          zone.services.access += USES[zone.use].urban ? rng.range(12, 30) : rng.range(-4, 8);
+        }
+
+        const roadCost = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) * (1 + Math.abs(a.elevation - b.elevation) * 2.6);
+        const roads = [];
+        const connected = new Set([centerCell.zoneId]);
+        while (connected.size < zones.length) {
+          let best = null;
+          for (const fromId of connected) {
+            for (const to of zones) {
+              if (connected.has(to.id)) continue;
+              const cost = roadCost(zones[fromId], to);
+              if (!best || cost < best.cost) best = { a: fromId, b: to.id, cost };
+            }
+          }
+          if (!best) break;
+          connected.add(best.b);
+          roads.push({ id: roads.length, a: best.a, b: best.b, level: 1, capacity: 1, flow: 0, upgrade: 0 });
+        }
+
+        const edgeKeys = new Set(roads.map(road => `${Math.min(road.a, road.b)}-${Math.max(road.a, road.b)}`));
+        for (const zone of zones) {
+          const nearest = zones
+            .filter(other => other.id !== zone.id)
+            .map(other => ({ id: other.id, cost: roadCost(zone, other) }))
+            .sort((a, b) => a.cost - b.cost)
+            .slice(0, 2);
+          for (const candidate of nearest) {
+            const key = `${Math.min(zone.id, candidate.id)}-${Math.max(zone.id, candidate.id)}`;
+            if (!edgeKeys.has(key) && candidate.cost < size * 8.2) {
+              edgeKeys.add(key);
+              roads.push({ id: roads.length, a: zone.id, b: candidate.id, level: 1, capacity: 1, flow: 0, upgrade: 0 });
+            }
+          }
+        }
+
+        for (const road of roads) {
+          const development = (zones[road.a].development + zones[road.b].development) / 2;
+          road.level = development > 0.67 ? 3 : development > 0.4 ? 2 : 1;
+          road.capacity = road.level * road.level * 0.85;
+        }
+
+        return { cols, rows, size, width, height, cells, zones, roads, center, centerZoneId: centerCell.zoneId };
+      }
+
+      function createCadre(rng, department) {
+        return {
+          department: department.id,
+          departmentLabel: department.label,
+          name: `${rng.pick(SURNAMES)}${rng.pick(GIVEN)}`,
+          ability: rng.range(48, 82),
+          integrity: rng.range(55, 94),
+          alignment: rng.range(52, 90),
+          tenure: 0
+        };
+      }
+
+      function compatibleZoneWeight(zone, sector) {
+        const useMatch = SECTORS[sector].uses.includes(zone.use) ? 4 : USES[zone.use].urban ? 0.65 : 0.12;
+        return Math.max(0.01, useMatch * zone.area * zone.development * (0.45 + zone.services.access / 100));
+      }
+
+      function createState(seed = Date.now() >>> 0) {
+        const rng = new RNG(seed);
+        const map = generateMap(seed);
+        const cityName = rng.pick(CITY_NAMES);
+        const cityShort = cityName.replace(/市$/, "");
+        const policies = {
+          policyRate: 4.2,
+          reserveRatio: 10,
+          localTax: 15.5,
+          industrialSubsidy: 4,
+          welfare: 48,
+          environment: 43,
+          landSupply: 52,
+          financialReg: 55,
+          settlement: 46,
+          publicInvestment: 54,
+          transportMode: "balanced"
+        };
+        const households = [];
+        const targetPopulation = rng.range(1720000, 1880000);
+        const householdAgents = 8000;
+        const urbanZones = map.zones.filter(zone => USES[zone.use].housing > 0.1);
+
+        for (let index = 0; index < householdAgents; index += 1) {
+          const zone = weightedPick(rng, urbanZones, item => item.housingCapacity * (0.4 + item.services.access / 100));
+          const urban = USES[zone.use].urban;
+          const educationRoll = rng.next() + (urban ? 0.15 : -0.1) + (zone.use === "science" ? 0.25 : 0);
+          const education = educationRoll > 1.07 ? 3 : educationRoll > 0.72 ? 2 : educationRoll > 0.32 ? 1 : 0;
+          households.push({
+            id: index,
+            zoneId: zone.id,
+            weight: rng.range(0.72, 1.28),
+            education,
+            hukou: rng.next() < (urban ? 0.76 : 0.9),
+            employedShare: clamp(rng.range(0.89, 0.99) + education * 0.01, 0.5, 1),
+            income: rng.range(3900, 5600) * (1 + education * 0.31),
+            savings: rng.range(5, 42) * (1 + education * 0.36),
+            debt: rng.next() < 0.56 ? rng.range(8, 78) : rng.range(0, 8),
+            health: rng.range(62, 92),
+            satisfaction: rng.range(48, 70),
+            age: rng.range(29, 57),
+            consumption: rng.range(0.58, 0.82)
+          });
+        }
+        const rawWeight = sum(households, household => household.weight);
+        for (const household of households) household.weight = household.weight / rawWeight * targetPopulation;
+
+        const sectorKeys = Object.keys(SECTORS);
+        const sectorWeights = {
+          manufacturing: 0.25,
+          construction: 0.12,
+          realestate: 0.08,
+          commerce: 0.22,
+          logistics: 0.1,
+          technology: 0.06,
+          finance: 0.05,
+          public: 0.12
+        };
+        const firms = [];
+        for (let index = 0; index < 560; index += 1) {
+          const sector = weightedPick(rng, sectorKeys, key => sectorWeights[key]);
+          const zone = weightedPick(rng, map.zones, item => compatibleZoneWeight(item, sector));
+          const employees = Math.round(rng.range(260, 2450) * (sector === "manufacturing" ? 1.32 : 1));
+          const productivity = rng.range(0.76, 1.34) * SECTORS[sector].skill;
+          firms.push({
+            id: index,
+            sector,
+            zoneId: zone.id,
+            employees,
+            productivity,
+            capital: rng.range(1.5, 18),
+            debt: rng.range(0.2, 4.8),
+            cash: rng.range(0.2, 4),
+            wage: rng.range(4600, 6900) * SECTORS[sector].skill,
+            output: employees * 0.00155 * productivity / 52,
+            expectedDemand: rng.range(0.88, 1.12),
+            profitMargin: SECTORS[sector].margin + rng.range(-0.035, 0.035),
+            distress: 0
+          });
+        }
+        const targetJobs = targetPopulation * 0.535;
+        const rawJobs = sum(firms, firm => firm.employees);
+        for (const firm of firms) {
+          firm.employees *= targetJobs / rawJobs;
+          firm.output = firm.employees * 0.00155 * firm.productivity / 52;
+        }
+
+        const banks = [
+          { id: 0, name: `${cityShort}发展银行`, deposits: 780, loans: 690, reserves: 82, capital: 74, npl: 2.1, risk: 0.62, loanRate: 5.8 },
+          { id: 1, name: "市商业银行", deposits: 520, loans: 485, reserves: 55, capital: 49, npl: 2.8, risk: 0.76, loanRate: 6.2 },
+          { id: 2, name: "惠民联合银行", deposits: 315, loans: 278, reserves: 38, capital: 31, npl: 3.4, risk: 0.54, loanRate: 6.6 }
+        ];
+
+        const cadres = DEPARTMENTS.map(department => createCadre(rng, department));
+        const initialGDP = sum(firms, firm => firm.output) * 52;
+        const targetState = {
+          version: 1,
+          seed,
+          rngState: rng.state,
+          cityName,
+          week: 0,
+          term: 1,
+          termLength: 260,
+          running: false,
+          speed: 1,
+          map,
+          households,
+          firms,
+          banks,
+          cadres,
+          candidatePools: {},
+          policies: { ...policies },
+          policyTargets: { ...policies },
+          funds: 118,
+          debt: 642,
+          hiddenDebt: 54,
+          pppObligations: [],
+          politicalCapital: 68,
+          corruptionRisk: 12,
+          dataReliability: 91,
+          externalDemand: 1,
+          inflation: 2.2,
+          consumptionIndex: 1,
+          baselineGDP: initialGDP,
+          annualGDP: initialGDP,
+          weeklyGDP: initialGDP / 52,
+          previousAnnualGDP: initialGDP,
+          population: targetPopulation,
+          unemployment: 5.4,
+          satisfaction: 58,
+          pollution: 48,
+          serviceScore: 51,
+          housingPrice: 1.08,
+          evaluation: 58,
+          evaluationParts: { economy: 56, livelihood: 54, risk: 52, ecology: 50, governance: 62, task: 60 },
+          activeTask: { label: "推进传统制造业技术改造", metric: "technology", target: 18, progress: 6 },
+          projectSerial: 0,
+          events: [
+            { week: 0, text: "省委组织部门下达任期目标：稳定就业、推进制造业升级并控制债务风险。" },
+            { week: 0, text: `${cityName}新一届市委班子履职，市域发展规划等待审议。` }
+          ],
+          history: [],
+          completedTerms: []
+        };
+        rebuildAggregates(targetState);
+        updateEvaluation(targetState);
+        recordHistory(targetState);
+        return targetState;
+      }
+
+      function cadreFor(targetState, department) {
+        return targetState.cadres.find(cadre => cadre.department === department);
+      }
+
+      function cadreEffect(targetState, department) {
+        const cadre = cadreFor(targetState, department);
+        if (!cadre) return 0.65;
+        return clamp((cadre.ability * 0.54 + cadre.alignment * 0.28 + cadre.integrity * 0.18) / 100, 0.4, 1);
+      }
+
+      function rebuildAggregates(targetState) {
+        for (const zone of targetState.map.zones) {
+          zone.population = 0;
+          zone.jobs = 0;
+          zone.output = 0;
+        }
+        for (const household of targetState.households) {
+          const zone = targetState.map.zones[household.zoneId];
+          if (zone) zone.population += household.weight;
+        }
+        for (const firm of targetState.firms) {
+          const zone = targetState.map.zones[firm.zoneId];
+          if (zone) {
+            zone.jobs += firm.employees;
+            zone.output += firm.output * 52;
+          }
+        }
+        targetState.population = sum(targetState.households, household => household.weight);
+        targetState.weeklyGDP = sum(targetState.firms, firm => firm.output);
+        targetState.annualGDP = targetState.weeklyGDP * 52;
+        const laborForce = targetState.population * 0.56;
+        const employed = sum(targetState.households, household => household.weight * 0.56 * household.employedShare);
+        targetState.unemployment = clamp((1 - employed / Math.max(1, laborForce)) * 100, 0.6, 28);
+        targetState.satisfaction = average(targetState.households, household => household.satisfaction);
+        targetState.pollution = average(targetState.map.zones, zone => zone.pollution);
+        targetState.serviceScore = average(targetState.map.zones, zone => (zone.services.education + zone.services.health + zone.services.sewage + zone.services.utilities) / 4);
+        const urbanZones = targetState.map.zones.filter(zone => USES[zone.use].urban);
+        targetState.housingPrice = average(urbanZones, zone => zone.landPrice) / 2.6;
+      }
+
+      function updateEvaluation(targetState) {
+        const elapsedYears = Math.max(1, targetState.week / 52);
+        const growth = (Math.pow(targetState.annualGDP / Math.max(1, targetState.baselineGDP), 1 / elapsedYears) - 1) * 100;
+        const debtRatio = (targetState.debt + targetState.hiddenDebt * 0.65) / Math.max(1, targetState.annualGDP) * 100;
+        const npl = average(targetState.banks, bank => bank.npl);
+        const governanceBase = average(targetState.cadres, cadre => cadre.ability * 0.45 + cadre.integrity * 0.35 + cadre.alignment * 0.2);
+        const economy = clamp(52 + growth * 3.2 - targetState.unemployment * 1.35 + targetState.consumptionIndex * 8, 0, 100);
+        const livelihood = clamp(targetState.satisfaction * 0.72 + targetState.serviceScore * 0.42 - targetState.unemployment * 0.55, 0, 100);
+        const risk = clamp(88 - debtRatio * 0.75 - npl * 4.5 - targetState.hiddenDebt * 0.025, 0, 100);
+        const ecology = clamp(96 - targetState.pollution * 1.08, 0, 100);
+        const governance = clamp(governanceBase - targetState.corruptionRisk * 0.42 + targetState.dataReliability * 0.15, 0, 100);
+        const task = clamp(48 + targetState.activeTask.progress * 1.8, 0, 100);
+        targetState.evaluationParts = { economy, livelihood, risk, ecology, governance, task };
+        const weighted = economy * 0.2 + livelihood * 0.2 + risk * 0.17 + ecology * 0.12 + governance * 0.16 + task * 0.15;
+        const hardPenalty = targetState.unemployment > 12 ? 8 : npl > 9 ? 10 : targetState.pollution > 82 ? 8 : 0;
+        targetState.evaluation = clamp(weighted - hardPenalty, 0, 100);
+      }
+
+      function recordHistory(targetState) {
+        targetState.history.push({
+          week: targetState.week,
+          population: targetState.population,
+          gdp: targetState.annualGDP,
+          funds: targetState.funds,
+          debt: targetState.debt,
+          unemployment: targetState.unemployment,
+          satisfaction: targetState.satisfaction,
+          pollution: targetState.pollution,
+          evaluation: targetState.evaluation
+        });
+        if (targetState.history.length > 300) targetState.history.shift();
+      }
+
+      let state = createState();
+      const ui = {
+        activeTab: "planning",
+        selectedZoneId: state.map.centerZoneId,
+        overlay: "use",
+        policyDraft: { ...state.policyTargets },
+        projectType: "school",
+        projectMode: "direct",
+        view: { x: 0, y: 0, scale: 1 },
+        dragging: false,
+        pointerStart: null,
+        lastPointer: null,
+        dirtyMap: true,
+        lastTime: performance.now(),
+        accumulator: 0,
+        toastTimer: null,
+        pointers: new Map(),
+        pinch: null
+      };
+
+      function addEvent(text) {
+        state.events.unshift({ week: state.week, text });
+        if (state.events.length > 18) state.events.length = 18;
+      }
+
+      function updatePolicies() {
+        for (const key of Object.keys(POLICY_META)) {
+          state.policies[key] = lerp(state.policies[key], state.policyTargets[key], 0.075);
+        }
+        state.policies.transportMode = state.policyTargets.transportMode;
+      }
+
+      function simulateProjects(rng) {
+        const execution = cadreEffect(state, "development") * 0.55 + cadreEffect(state, "housing") * 0.45;
+        for (const zone of state.map.zones) {
+          for (const project of zone.projects) {
+            if (project.status !== "building") continue;
+            const integrity = cadreFor(state, project.department)?.integrity || cadreFor(state, "housing").integrity;
+            const delayRisk = (100 - integrity) / 100 * (project.mode === "direct" ? 0.004 : 0.009);
+            if (rng.next() < delayRisk) {
+              project.delay += 1;
+              state.corruptionRisk = clamp(state.corruptionRisk + 0.08, 0, 100);
+              continue;
+            }
+            project.progress += clamp(0.55 + execution * 0.65 + (project.mode === "direct" ? 0 : 0.18), 0.55, 1.5);
+            if (project.progress >= project.duration) {
+              project.status = "complete";
+              const quality = project.quality * (0.7 + integrity / 330);
+              zone.services[project.service] = clamp(zone.services[project.service] + project.capacity * quality, 0, 100);
+              addEvent(`${zone.name}${project.label}建成投用，开始形成公共服务能力。`);
+            }
+          }
+        }
+      }
+
+      function simulateBanks(rng) {
+        const oldLoans = sum(state.banks, bank => bank.loans);
+        const distressedShare = state.firms.filter(firm => firm.distress > 0.55).length / state.firms.length;
+        const housingDemand = average(state.map.zones, zone => clamp(zone.population / Math.max(1, zone.housingCapacity), 0, 2));
+        const regulation = state.policies.financialReg / 100;
+        const reserveRatio = state.policies.reserveRatio / 100;
+        const financialAbility = cadreEffect(state, "financial");
+
+        for (const bank of state.banks) {
+          const riskPremium = bank.npl * 0.22 + (1 - bank.risk) * 1.2 + (1 - financialAbility) * 0.8;
+          bank.loanRate = clamp(state.policies.policyRate + 1.15 + riskPremium, 0.8, 18);
+          const creditDemand = 1 + (state.externalDemand - 1) * 0.4 + (housingDemand - 0.85) * 0.16 + state.policies.industrialSubsidy / 150;
+          const prudentialBrake = regulation * bank.npl / 24 + reserveRatio * 0.5;
+          const weeklyGrowth = clamp((creditDemand - 0.9 - prudentialBrake) * bank.risk * 0.0045, -0.006, 0.012);
+          const reserveCapacity = Math.max(0, bank.deposits * (1 - reserveRatio) * 1.02 - bank.loans);
+          const loanChange = clamp(bank.loans * weeklyGrowth, -bank.loans * 0.006, reserveCapacity + bank.loans * 0.002);
+          bank.loans = Math.max(10, bank.loans + loanChange);
+          const depositGrowth = clamp((state.consumptionIndex < 1 ? 0.0018 : 0.0007) + state.policies.policyRate / 10000 + rng.range(-0.0005, 0.0005), -0.002, 0.004);
+          bank.deposits *= 1 + depositGrowth;
+          const nplTarget = clamp(1.2 + state.unemployment * 0.29 + distressedShare * 12 - regulation * 2.2, 0.8, 18);
+          bank.npl = clamp(lerp(bank.npl, nplTarget, 0.045) + rng.range(-0.03, 0.03), 0.6, 24);
+          const interestIncome = bank.loans * Math.max(0.2, bank.loanRate - state.policies.policyRate) / 100 / 52;
+          const creditLoss = bank.loans * bank.npl / 100 / 52 * (0.22 + regulation * 0.18);
+          bank.capital = Math.max(1, bank.capital + interestIncome - creditLoss);
+          bank.reserves = Math.max(bank.deposits * reserveRatio, bank.reserves * 0.96 + bank.deposits * reserveRatio * 0.04);
+        }
+        const newLoans = sum(state.banks, bank => bank.loans);
+        state.creditGrowth = oldLoans > 0 ? (newLoans / oldLoans - 1) * 5200 : 0;
+      }
+
+      function sectorDemand(sector) {
+        const development = average(state.map.zones, zone => zone.development);
+        const creditImpulse = clamp((state.creditGrowth || 0) / 10, -0.2, 0.3);
+        if (sector === "manufacturing") return state.externalDemand * 0.62 + state.consumptionIndex * 0.24 + 0.14 + state.policies.industrialSubsidy / 180;
+        if (sector === "construction") return 0.55 + development * 0.44 + state.policies.publicInvestment / 260 + state.policies.landSupply / 450 + creditImpulse;
+        if (sector === "realestate") return 0.62 + state.housingPrice * 0.2 + state.policies.landSupply / 500 - state.policies.policyRate / 55 + creditImpulse;
+        if (sector === "commerce") return 0.2 + state.consumptionIndex * 0.8;
+        if (sector === "logistics") return state.externalDemand * 0.46 + state.consumptionIndex * 0.3 + 0.24;
+        if (sector === "technology") return 0.72 + state.policies.industrialSubsidy / 55 + state.serviceScore / 310;
+        if (sector === "finance") return 0.78 + creditImpulse + state.policies.financialReg / 520;
+        return 0.76 + state.policies.welfare / 260 + state.population / 9000000;
+      }
+
+      function simulateFirms(rng) {
+        const averageLoanRate = average(state.banks, bank => bank.loanRate);
+        const subsidy = state.policies.industrialSubsidy / 100;
+        for (const firm of state.firms) {
+          const zone = state.map.zones[firm.zoneId];
+          const sector = SECTORS[firm.sector];
+          const demandTarget = sectorDemand(firm.sector);
+          firm.expectedDemand = lerp(firm.expectedDemand, demandTarget, 0.06);
+          const locationMatch = sector.uses.includes(zone.use) ? 1.08 : USES[zone.use].urban ? 0.91 : 0.73;
+          const infrastructure = clamp((zone.services.access * 0.45 + zone.services.utilities * 0.38 + zone.services.sewage * 0.17) / 100, 0.3, 1.1);
+          const environmentCost = sector.pollution * state.policies.environment / 100 * 0.045;
+          const financeCost = averageLoanRate / 100 * firm.debt / Math.max(1, firm.capital) * 0.004;
+          const support = ["manufacturing", "technology", "logistics"].includes(firm.sector) ? subsidy * 0.008 : 0;
+          const employmentStabilizer = Math.max(0, state.unemployment - 7) * 0.00008;
+          const weeklyGrowth = clamp(0.0003 + employmentStabilizer + (firm.expectedDemand - 1) * 0.012 + (locationMatch - 1) * 0.005 + (infrastructure - 0.5) * 0.0025 + support - environmentCost * 0.015 - financeCost + rng.range(-0.0025, 0.0025), -0.028, 0.026);
+          firm.output = Math.max(0.001, firm.output * (1 + weeklyGrowth));
+          const desiredEmployees = firm.output * 52 / Math.max(0.0005, 0.00155 * firm.productivity);
+          firm.employees = Math.max(4, lerp(firm.employees, desiredEmployees, 0.055));
+          firm.wage *= 1 + clamp((desiredEmployees / Math.max(1, firm.employees) - 1) * 0.003 + state.inflation / 100 / 52 * 0.65, -0.003, 0.004);
+          const interest = firm.debt * averageLoanRate / 100 / 52;
+          const profit = firm.output * clamp(firm.profitMargin + 0.06 + support * 0.4 - environmentCost, 0.01, 0.46) - interest;
+          firm.cash += profit;
+          if (profit > 0 && firm.expectedDemand > 1.03 && averageLoanRate < 11) {
+            const investment = Math.min(profit * 0.28, firm.capital * 0.004);
+            firm.capital += investment;
+            firm.debt += investment * clamp(0.62 + averageLoanRate / 40, 0.45, 0.88);
+            firm.productivity *= 1 + (firm.sector === "technology" ? 0.00055 : 0.00018);
+          }
+          firm.distress = clamp(lerp(firm.distress, profit < 0 ? 1 : 0, 0.055), 0, 1);
+          if (firm.distress > 0.88 && rng.next() < 0.012) {
+            firm.employees *= 0.65;
+            firm.output *= 0.62;
+            firm.debt *= 0.82;
+            firm.cash = 0.05;
+            firm.distress = 0.48;
+          }
+        }
+      }
+
+      function updateTaskProgress() {
+        if (state.activeTask.metric === "risk") state.activeTask.progress = state.evaluationParts.risk;
+        else if (state.activeTask.metric === "livelihood") state.activeTask.progress = state.evaluationParts.livelihood;
+        else {
+          const technologyOutput = sum(state.firms.filter(firm => firm.sector === "technology"), firm => firm.output);
+          state.activeTask.progress = clamp(technologyOutput / Math.max(0.1, state.weeklyGDP) * 100, 0, 100);
+        }
+      }
+
+      function chooseMoveZone(household, rng) {
+        let bestZone = state.map.zones[household.zoneId];
+        let bestScore = -Infinity;
+        for (let attempt = 0; attempt < 8; attempt += 1) {
+          const candidate = state.map.zones[rng.int(0, state.map.zones.length - 1)];
+          if (USES[candidate.use].housing <= 0.08) continue;
+          const crowding = candidate.population / Math.max(1, candidate.housingCapacity);
+          const service = (candidate.services.education + candidate.services.health + candidate.services.access) / 300;
+          const jobs = candidate.jobs / Math.max(1000, candidate.population * 0.52);
+          const score = service * 1.7 + jobs * 0.45 - crowding * 0.7 - candidate.landPrice * 0.08 + rng.range(-0.08, 0.08);
+          if (score > bestScore) {
+            bestScore = score;
+            bestZone = candidate;
+          }
+        }
+        return bestZone;
+      }
+
+      function simulateHouseholds(rng) {
+        const totalJobs = sum(state.firms, firm => firm.employees);
+        const laborForce = state.population * 0.56;
+        const jobAvailability = clamp(totalJobs / Math.max(1, laborForce), 0.52, 1.04);
+        const weightedWage = sum(state.firms, firm => firm.wage * firm.employees) / Math.max(1, totalJobs);
+        let consumptionTotal = 0;
+        let incomeTotal = 0;
+
+        for (const household of state.households) {
+          const zone = state.map.zones[household.zoneId];
+          const accessibility = zone.services.access / 100;
+          const skillBonus = (household.education - 1.2) * 0.028;
+          const targetEmployment = clamp(jobAvailability + skillBonus + (accessibility - 0.55) * 0.08, 0.45, 0.99);
+          household.employedShare = lerp(household.employedShare, targetEmployment, 0.075);
+          const targetIncome = weightedWage * (0.72 + household.education * 0.2) * (0.72 + household.employedShare * 0.3);
+          household.income = lerp(household.income, targetIncome, 0.025);
+          const housingBurden = clamp(zone.landPrice / Math.max(0.4, household.income / 3400), 0, 2);
+          const services = (zone.services.education + zone.services.health + zone.services.access + zone.services.sewage) / 4;
+          const incomeScore = clamp(35 + Math.log(Math.max(1200, household.income) / 3000) * 24, 20, 88);
+          const employmentScore = household.employedShare * 86;
+          const environmentScore = clamp(92 - zone.pollution * 0.85, 0, 100);
+          const targetSatisfaction = incomeScore * 0.29 + employmentScore * 0.24 + services * 0.25 + environmentScore * 0.14 + clamp(70 - housingBurden * 22, 10, 90) * 0.08;
+          household.satisfaction = lerp(household.satisfaction, targetSatisfaction, 0.055);
+          household.health = clamp(lerp(household.health, zone.services.health * 0.58 + environmentScore * 0.42, 0.012), 20, 100);
+          const propensity = clamp(household.consumption - state.policies.policyRate / 130 + state.policies.welfare / 900, 0.46, 0.91);
+          const spending = household.income * propensity;
+          const saving = Math.max(-household.savings * 0.003, (household.income - spending) / 10000 / 4.33);
+          household.savings = Math.max(0, household.savings + saving - household.debt * state.policies.policyRate / 100 / 52);
+          incomeTotal += household.income * household.weight;
+          consumptionTotal += spending * household.weight;
+          const migrationRate = clamp((household.satisfaction - 56) * 0.000004 + (state.policies.settlement - 45) * 0.0000018 - Math.max(0, housingBurden - 0.9) * 0.00008, -0.00045, 0.00042);
+          household.weight *= 1 + migrationRate;
+          if (state.week % 4 === 0 && rng.next() < 0.012 + Math.max(0, housingBurden - 0.8) * 0.009) {
+            const destination = chooseMoveZone(household, rng);
+            if (destination) household.zoneId = destination.id;
+          }
+        }
+        const consumptionRatio = consumptionTotal / Math.max(1, incomeTotal);
+        state.consumptionIndex = clamp(lerp(state.consumptionIndex, consumptionRatio / 0.68, 0.08), 0.65, 1.35);
+      }
+
+      function simulateZones() {
+        const housingAbility = cadreEffect(state, "housing");
+        const environmentalAbility = cadreEffect(state, "environment");
+        state.weeklyLandDevelopment = 0;
+        for (const zone of state.map.zones) {
+          const use = USES[zone.use];
+          const occupancy = zone.population / Math.max(1, zone.housingCapacity);
+          const jobPressure = zone.jobs / Math.max(1000, zone.population * 0.52);
+          const finance = clamp(1.2 - average(state.banks, bank => bank.loanRate) / 14, 0.25, 1.1);
+          const demand = use.housing * occupancy * 0.65 + use.jobs * clamp(jobPressure, 0, 1.6) * 0.35;
+          const landPolicy = state.policies.landSupply / 100;
+          const developmentChange = clamp((demand - 0.55) * 0.0018 * finance * housingAbility * (0.55 + landPolicy) - (zone.development > 0.92 ? 0.001 : 0), -0.0018, 0.0038);
+          zone.development = clamp(zone.development + developmentChange, 0.03, 1);
+          if (developmentChange > 0) state.weeklyLandDevelopment += developmentChange * zone.area;
+          zone.housingCapacity = zone.area * 4200 * zone.intensity * use.housing * Math.max(0.35, zone.development);
+          zone.vacancy = clamp(1 - zone.population / Math.max(1, zone.housingCapacity), 0, 0.8);
+          const servicePremium = (zone.services.education + zone.services.health + zone.services.access) / 300;
+          const targetPrice = clamp(0.28 + zone.development * 3.2 + servicePremium * 1.7 + occupancy * 0.8 - state.policies.policyRate * 0.08, 0.12, 8.5);
+          zone.landPrice = lerp(zone.landPrice, targetPrice, 0.022);
+          const industrialOutput = sum(state.firms.filter(firm => firm.zoneId === zone.id), firm => firm.output * SECTORS[firm.sector].pollution);
+          const treatment = zone.services.sewage / 100 * (0.65 + environmentalAbility * 0.35);
+          const pollutionTarget = clamp(industrialOutput / Math.max(0.2, zone.area) * 2200 * (1 - state.policies.environment / 155) - treatment * 26 + 18, 3, 100);
+          zone.pollution = lerp(zone.pollution || pollutionTarget, pollutionTarget, 0.06);
+          const populationLoad = zone.population / Math.max(10000, zone.area * 5500);
+          zone.services.education = clamp(zone.services.education - Math.max(0, populationLoad - 0.65) * 0.015, 5, 100);
+          zone.services.health = clamp(zone.services.health - Math.max(0, populationLoad - 0.65) * 0.014, 5, 100);
+          zone.services.utilities = clamp(zone.services.utilities - Math.max(0, zone.development - 0.7) * 0.012, 10, 100);
+        }
+      }
+
+      function simulateRoads() {
+        const housingAbility = cadreEffect(state, "housing");
+        for (const road of state.map.roads) {
+          const a = state.map.zones[road.a];
+          const b = state.map.zones[road.b];
+          const commute = (a.population * b.jobs + b.population * a.jobs) / 1100000000;
+          const freight = (a.output + b.output) / 260;
+          road.flow = clamp(commute + freight, 0.02, 30);
+          const congestion = road.flow / Math.max(0.1, road.capacity);
+          if (congestion > 1.05 && road.level < 4) {
+            const modeBonus = state.policies.transportMode === "road" ? 1.3 : state.policies.transportMode === "freight" ? 1.18 : 1;
+            road.upgrade += housingAbility * state.policies.publicInvestment / 100 * modeBonus;
+            const needed = 38 + road.level * 18;
+            const upgradeCost = 1.6 + road.level * 2.4;
+            if (road.upgrade >= needed && state.funds > upgradeCost + 8) {
+              state.funds -= upgradeCost;
+              road.level += 1;
+              road.capacity = road.level * road.level * 0.85;
+              road.upgrade = 0;
+              addEvent(`${a.name}至${b.name}的道路完成扩容，区块联系能力提升。`);
+            }
+          } else {
+            road.upgrade = Math.max(0, road.upgrade - 0.15);
+          }
+        }
+
+        for (const zone of state.map.zones) {
+          const adjacent = state.map.roads.filter(road => road.a === zone.id || road.b === zone.id);
+          if (!adjacent.length) continue;
+          const roadQuality = average(adjacent, road => clamp(road.level * 21 - Math.max(0, road.flow / road.capacity - 1) * 24, 15, 96));
+          zone.services.access = lerp(zone.services.access, roadQuality, 0.035);
+        }
+      }
+
+      function simulateGovernment() {
+        const financeAbility = cadreEffect(state, "finance");
+        const taxRevenue = state.weeklyGDP * state.policies.localTax / 100 * 0.38 * (0.72 + financeAbility * 0.28);
+        const landRevenue = state.weeklyLandDevelopment * state.policies.landSupply / 100 * state.housingPrice * 0.48;
+        const transfers = 0.34 + Math.max(0, 55 - state.evaluation) * 0.006;
+        const operations = state.population / 1000000 * 0.24;
+        const welfare = state.population / 1000000 * 0.12 * state.policies.welfare / 50;
+        const subsidy = state.weeklyGDP * state.policies.industrialSubsidy / 100 * 0.2;
+        const debtInterest = state.debt * (state.policies.policyRate + 1.5) / 100 / 52;
+        const completedProjects = sum(state.map.zones, zone => zone.projects.filter(project => project.status === "complete").length);
+        const maintenance = completedProjects * 0.012;
+        const pppPayments = sum(state.pppObligations, obligation => obligation.remaining > 0 ? obligation.weekly : 0);
+        for (const obligation of state.pppObligations) obligation.remaining = Math.max(0, obligation.remaining - 1);
+        const revenue = taxRevenue + landRevenue + transfers;
+        const expenditure = operations + welfare + subsidy + debtInterest + maintenance + pppPayments;
+        state.funds += revenue - expenditure;
+        state.lastBudget = { revenue, expenditure, taxRevenue, landRevenue, transfers, operations, welfare, subsidy, debtInterest, maintenance, pppPayments };
+        if (state.funds < 0) {
+          const emergencyDebt = 20 - state.funds;
+          state.debt += emergencyDebt;
+          state.funds = 20;
+          state.hiddenDebt += emergencyDebt * 0.08;
+          addEvent(`财政资金出现缺口，临时新增${emergencyDebt.toFixed(1)}亿元融资以维持运转。`);
+        }
+        state.politicalCapital = clamp(state.politicalCapital + (state.evaluation - 48) / 800, 0, 100);
+        const oversight = state.policies.financialReg * 0.35 + average(state.cadres, cadre => cadre.integrity) * 0.65;
+        const procurementExposure = state.weeklyLandDevelopment + pppPayments * 0.2;
+        state.corruptionRisk = clamp(state.corruptionRisk + procurementExposure * (100 - oversight) * 0.00016 - oversight * 0.0008, 0, 100);
+        state.dataReliability = clamp(state.dataReliability - Math.max(0, state.corruptionRisk - 45) * 0.0009 + (oversight - 60) * 0.0007, 35, 100);
+      }
+
+      function simulateInflation() {
+        const demandPressure = (state.consumptionIndex - 1) * 2.2 + (state.creditGrowth || 0) * 0.05;
+        const supplyPressure = state.externalDemand < 0.94 ? -0.4 : 0;
+        const target = clamp(2.1 + demandPressure + supplyPressure - state.policies.policyRate * 0.08, -1.5, 9);
+        state.inflation = lerp(state.inflation, target, 0.06);
+      }
+
+      function maybeGenerateEvent(rng) {
+        if (state.week === 0 || state.week % 13 !== 0) return;
+        const roll = rng.next();
+        if (roll < 0.16) {
+          state.externalDemand = clamp(state.externalDemand + rng.range(-0.11, 0.13), 0.72, 1.28);
+          addEvent(state.externalDemand >= 1 ? "外部订单回升，制造业与物流业预期改善。" : "外部订单走弱，出口型企业开始收缩用工。处置不当可能形成连锁失业。" );
+        } else if (roll < 0.29 && state.pollution > 48) {
+          state.evaluation = Math.max(0, state.evaluation - 3);
+          state.funds -= 2.4;
+          addEvent("省级生态督察发现部分园区排放问题，要求限期整改。" );
+        } else if (roll < 0.4 && state.corruptionRisk > 22) {
+          const detected = rng.range(1, 7);
+          state.corruptionRisk = Math.max(0, state.corruptionRisk - detected * 0.5);
+          state.politicalCapital = Math.max(0, state.politicalCapital - detected);
+          addEvent("专项审计发现项目采购程序存在风险，相关干部进入调查程序。" );
+        } else if (roll < 0.5 && state.unemployment > 7.2) {
+          state.satisfaction = Math.max(0, state.satisfaction - 2);
+          addEvent("部分企业集中裁员引发劳资纠纷，市里需要增加就业与社会救助资源。" );
+        } else if (roll < 0.59) {
+          const loss = rng.range(2, 8);
+          state.funds -= loss;
+          for (const zone of state.map.zones) zone.services.access = Math.max(10, zone.services.access - rng.range(0, 3));
+          addEvent(`强降雨造成部分基础设施受损，应急处置支出${loss.toFixed(1)}亿元。`);
+        } else if (roll < 0.72) {
+          state.externalDemand = clamp(state.externalDemand + 0.05, 0.72, 1.28);
+          addEvent(`省里将一项产业链协作项目布局${state.cityName}，相关产业获得新的市场机会。`);
+        } else {
+          addEvent("季度经济运行会议召开，各部门提交了就业、金融和项目建设情况。" );
+        }
+      }
+
+      function finishTerm() {
+        const score = state.evaluation;
+        const grade = score >= 82 ? "优秀" : score >= 70 ? "良好" : score >= 58 ? "合格" : score >= 45 ? "较弱" : "不合格";
+        state.completedTerms.push({ term: state.term, score, grade, gdp: state.annualGDP, debt: state.debt, population: state.population });
+        state.running = false;
+        state.termEnded = true;
+        const career = score >= 82 ? "获得调任更高等级城市的资格" : score >= 70 ? "可选择留任或同级调任" : score >= 58 ? "进入留任观察" : score >= 45 ? "面临调整岗位" : "触发免职与问责结局";
+        addEvent(`第${state.term}届任期考核为“${grade}”，${career}。`);
+      }
+
+      function tickWeek() {
+        if (state.termEnded) return;
+        const rng = new RNG(state.rngState);
+        updatePolicies();
+        simulateProjects(rng);
+        simulateBanks(rng);
+        simulateFirms(rng);
+        simulateHouseholds(rng);
+        rebuildAggregates(state);
+        simulateZones();
+        simulateRoads();
+        simulateGovernment();
+        simulateInflation();
+        rebuildAggregates(state);
+        updateEvaluation(state);
+        updateTaskProgress();
+        updateEvaluation(state);
+        state.week += 1;
+        for (const cadre of state.cadres) cadre.tenure += 1;
+        maybeGenerateEvent(rng);
+        if (state.week % 4 === 0) recordHistory(state);
+        if (state.week > 0 && state.week % state.termLength === 0) finishTerm();
+        state.rngState = rng.state;
+        ui.dirtyMap = true;
+      }
+
+      function cssColor(name, fallback = "currentColor") {
+        return getComputedStyle(root).getPropertyValue(name).trim() || fallback;
+      }
+
+      function themeColors() {
+        return {
+          background: cssColor("--background"),
+          foreground: cssColor("--foreground"),
+          card: cssColor("--card"),
+          cardForeground: cssColor("--card-foreground"),
+          muted: cssColor("--muted"),
+          mutedForeground: cssColor("--muted-foreground"),
+          border: cssColor("--border"),
+          primary: cssColor("--primary"),
+          destructive: cssColor("--destructive"),
+          series: [1, 2, 3, 4, 5, 6].map(index => cssColor(`--viz-series-${index}`))
+        };
+      }
+
+      function resizeCanvas() {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = Math.min(2, window.devicePixelRatio || 1);
+        const width = Math.max(320, Math.round(rect.width * dpr));
+        const height = Math.max(320, Math.round(rect.height * dpr));
+        if (canvas.width !== width || canvas.height !== height) {
+          canvas.width = width;
+          canvas.height = height;
+          ui.dpr = dpr;
+          ui.dirtyMap = true;
+          if (!ui.view.initialized) resetView();
+        }
+      }
+
+      function resetView() {
+        const rect = canvas.getBoundingClientRect();
+        const padding = 26;
+        const scale = Math.min((rect.width - padding * 2) / state.map.width, (rect.height - padding * 2) / state.map.height);
+        ui.view.scale = clamp(scale, 0.35, 2.3);
+        ui.view.x = (rect.width - state.map.width * ui.view.scale) / 2;
+        ui.view.y = (rect.height - state.map.height * ui.view.scale) / 2;
+        ui.view.initialized = true;
+        ui.dirtyMap = true;
+      }
+
+      function tracePolygon(context, polygon) {
+        context.beginPath();
+        context.moveTo(polygon[0].x, polygon[0].y);
+        for (let index = 1; index < polygon.length; index += 1) context.lineTo(polygon[index].x, polygon[index].y);
+        context.closePath();
+      }
+
+      function overlayValue(zone) {
+        if (ui.overlay === "population") return clamp(zone.population / Math.max(12000, zone.area * 8500), 0, 1);
+        if (ui.overlay === "economy") return clamp(zone.output / Math.max(12, state.annualGDP / state.map.zones.length * 2.2), 0, 1);
+        if (ui.overlay === "pollution") return zone.pollution / 100;
+        if (ui.overlay === "services") return (zone.services.education + zone.services.health + zone.services.sewage + zone.services.access) / 400;
+        return 0.5;
+      }
+
+      function drawTerrain(colors) {
+        for (const cell of state.map.cells) {
+          tracePolygon(ctx, cell.polygon);
+          if (cell.water) {
+            ctx.fillStyle = colors.series[0];
+            ctx.globalAlpha = 0.3;
+            ctx.fill();
+            ctx.globalAlpha = 0.12;
+            ctx.strokeStyle = colors.cardForeground;
+            ctx.lineWidth = 0.45;
+            ctx.stroke();
+            continue;
+          }
+          const zone = state.map.zones[cell.zoneId];
+          ctx.fillStyle = colors.card;
+          ctx.globalAlpha = 1;
+          ctx.fill();
+          if (ui.overlay === "use") {
+            ctx.fillStyle = colors.series[USES[zone.use].series - 1];
+            ctx.globalAlpha = USES[zone.use].urban ? 0.25 + zone.development * 0.16 : 0.14 + zone.moisture * 0.08;
+          } else {
+            const seriesIndex = ui.overlay === "pollution" ? 2 : ui.overlay === "services" ? 1 : 0;
+            ctx.fillStyle = colors.series[seriesIndex];
+            ctx.globalAlpha = 0.08 + overlayValue(zone) * 0.52;
+          }
+          ctx.fill();
+          ctx.fillStyle = colors.foreground;
+          ctx.globalAlpha = cell.elevation * 0.055;
+          ctx.fill();
+          if (zone.id === ui.selectedZoneId) {
+            ctx.strokeStyle = colors.primary;
+            ctx.globalAlpha = 0.78;
+            ctx.lineWidth = 1.5 / ui.view.scale;
+            ctx.stroke();
+          }
+        }
+        ctx.globalAlpha = 1;
+
+        for (const cell of state.map.cells) {
+          if (cell.water) continue;
+          const neighbors = [
+            [cell.col + 1, cell.row],
+            [cell.col - 1, cell.row],
+            [cell.col, cell.row + 1],
+            [cell.col, cell.row - 1]
+          ];
+          const boundary = neighbors.some(([col, row]) => {
+            const neighbor = state.map.cells.find(item => item.col === col && item.row === row);
+            return neighbor && !neighbor.water && neighbor.zoneId !== cell.zoneId;
+          });
+          if (boundary) {
+            tracePolygon(ctx, cell.polygon);
+            ctx.strokeStyle = colors.border;
+            ctx.globalAlpha = 0.42;
+            ctx.lineWidth = 0.8 / ui.view.scale;
+            ctx.stroke();
+          }
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      function drawBuildings(colors) {
+        if (ui.view.scale < 0.48) return;
+        for (const cell of state.map.cells) {
+          if (cell.water || cell.zoneId < 0) continue;
+          const zone = state.map.zones[cell.zoneId];
+          const use = USES[zone.use];
+          if (!use.urban || zone.development < 0.18) continue;
+          const count = clamp(Math.floor(zone.development * zone.intensity * 1.55), 1, 7);
+          for (let index = 0; index < count; index += 1) {
+            const h1 = hashUnit(state.seed + cell.id * 97 + index * 619);
+            const h2 = hashUnit(state.seed + cell.id * 131 + index * 887);
+            if (h1 > zone.development + 0.12) continue;
+            const x = cell.x + (h1 - 0.5) * state.map.size * 1.1;
+            const y = cell.y + (h2 - 0.5) * state.map.size * 0.9;
+            const width = 2.3 + h2 * (zone.use === "industrial" ? 6 : 3.8);
+            const height = 2 + h1 * (zone.use === "residential" ? 4.8 : 3.5);
+            const extrusion = 1.2 + zone.intensity * 0.72;
+            ctx.fillStyle = colors.foreground;
+            ctx.globalAlpha = 0.16;
+            ctx.fillRect(x + extrusion, y + extrusion, width, height);
+            ctx.fillStyle = colors.series[use.series - 1];
+            ctx.globalAlpha = 0.72;
+            ctx.fillRect(x, y, width, height);
+            ctx.strokeStyle = colors.cardForeground;
+            ctx.globalAlpha = 0.34;
+            ctx.lineWidth = 0.45 / ui.view.scale;
+            ctx.strokeRect(x, y, width, height);
+          }
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      function drawRoads(colors) {
+        for (const road of state.map.roads) {
+          const a = state.map.zones[road.a];
+          const b = state.map.zones[road.b];
+          const midX = (a.x + b.x) / 2;
+          const midY = (a.y + b.y) / 2 - Math.min(12, Math.abs(a.x - b.x) * 0.035);
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.quadraticCurveTo(midX, midY, b.x, b.y);
+          ctx.strokeStyle = colors.card;
+          ctx.globalAlpha = 0.88;
+          ctx.lineWidth = (2.2 + road.level * 1.35) / ui.view.scale;
+          ctx.setLineDash([]);
+          ctx.stroke();
+          ctx.strokeStyle = state.policies.transportMode === "green" ? colors.series[1] : state.policies.transportMode === "freight" ? colors.series[2] : state.policies.transportMode === "transit" ? colors.series[0] : colors.foreground;
+          ctx.globalAlpha = clamp(0.36 + road.level * 0.11 - Math.max(0, road.flow / road.capacity - 1) * 0.08, 0.18, 0.86);
+          ctx.lineWidth = (0.8 + road.level * 0.52) / ui.view.scale;
+          if (state.policies.transportMode === "transit") ctx.setLineDash([5 / ui.view.scale, 3 / ui.view.scale]);
+          ctx.stroke();
+        }
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 1;
+      }
+
+      function drawProjectMarkers(colors) {
+        for (const zone of state.map.zones) {
+          const completed = zone.projects.filter(project => project.status === "complete");
+          completed.slice(0, 4).forEach((project, index) => {
+            const offsetX = (index % 2) * 7 - 5;
+            const offsetY = Math.floor(index / 2) * 7 + 5;
+            ctx.beginPath();
+            ctx.arc(zone.x + offsetX, zone.y + offsetY, 2.6 / Math.max(0.7, ui.view.scale), 0, Math.PI * 2);
+            ctx.fillStyle = colors.primary;
+            ctx.globalAlpha = 0.9;
+            ctx.fill();
+          });
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      function drawLabels(colors) {
+        if (ui.view.scale < 0.62) return;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = `${Math.max(8, 10 / Math.sqrt(ui.view.scale))}px system-ui, sans-serif`;
+        for (const zone of state.map.zones) {
+          if (zone.id !== ui.selectedZoneId && zone.development < 0.3 && ui.view.scale < 0.95) continue;
+          const label = zone.name.replace("片区", "");
+          ctx.lineWidth = 2.6 / ui.view.scale;
+          ctx.strokeStyle = colors.card;
+          ctx.globalAlpha = 0.86;
+          ctx.strokeText(label, zone.x, zone.y - 8);
+          ctx.fillStyle = colors.cardForeground;
+          ctx.globalAlpha = zone.id === ui.selectedZoneId ? 1 : 0.72;
+          ctx.fillText(label, zone.x, zone.y - 8);
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      function drawMap() {
+        resizeCanvas();
+        if (!ui.dirtyMap) return;
+        const colors = themeColors();
+        const dpr = ui.dpr || 1;
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = colors.card;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.setTransform(dpr * ui.view.scale, 0, 0, dpr * ui.view.scale, dpr * ui.view.x, dpr * ui.view.y);
+        drawTerrain(colors);
+        drawBuildings(colors);
+        drawRoads(colors);
+        drawProjectMarkers(colors);
+        drawLabels(colors);
+        ui.dirtyMap = false;
+      }
+
+      function barLine(label, value) {
+        const safe = clamp(value, 0, 100);
+        return `<div class="cg-bar-line text-small"><span>${label}</span><div class="cg-bar" aria-label="${label}${safe.toFixed(0)}"><span style="--bar-width:${safe}%"></span></div><span>${safe.toFixed(0)}</span></div>`;
+      }
+
+      function selectedZone() {
+        return state.map.zones[ui.selectedZoneId] || state.map.zones[0];
+      }
+
+      function renderPlanningPanel() {
+        const zone = selectedZone();
+        const useOptions = Object.entries(USES).map(([key, value]) => `<option value="${key}" ${zone.use === key ? "selected" : ""}>${value.label}</option>`).join("");
+        const projects = zone.projects.length ? zone.projects.slice(-4).map(project => `<div class="cg-project-row text-small"><div class="cg-row-head"><span>${project.label}</span><span class="cg-subtle">${project.status === "complete" ? "已投用" : `${Math.min(100, project.progress / project.duration * 100).toFixed(0)}%`}</span></div></div>`).join("") : `<div class="cg-subtle text-small">该区块尚无政府专项项目。</div>`;
+        panelEl.innerHTML = `
+          <section class="cg-section">
+            <div class="cg-section-title">${zone.name}</div>
+            <div class="cg-subtle text-small">${zone.area.toFixed(1)}平方公里 · ${USES[zone.use].label} · 开发度${(zone.development * 100).toFixed(0)}%</div>
+            <div class="cg-kv text-small">
+              <span>常住人口</span><span>${formatPopulation(zone.population)}</span>
+              <span>就业岗位</span><span>${formatPopulation(zone.jobs)}</span>
+              <span>年度产出</span><span>${formatMoney(zone.output)}</span>
+              <span>土地价格指数</span><span>${zone.landPrice.toFixed(2)}</span>
+              <span>环境压力</span><span>${zone.pollution.toFixed(0)}</span>
+            </div>
+          </section>
+          <section class="cg-section">
+            <div class="cg-section-title">区域规划</div>
+            <div class="cg-field">
+              <label class="form-label" for="cg-zone-use">主要用途</label>
+              <select id="cg-zone-use" class="form-select" data-role="zone-use">${useOptions}</select>
+            </div>
+            <div class="cg-field">
+              <div class="cg-field-head"><label class="form-label" for="cg-zone-intensity">开发强度</label><span class="cg-range-value text-small" data-bind="zone-intensity-value">${zone.intensity}级</span></div>
+              <input id="cg-zone-intensity" class="form-range" type="range" min="1" max="5" step="1" value="${zone.intensity}" data-role="zone-intensity">
+            </div>
+            <button type="button" class="btn btn-primary" data-action="apply-plan">提交规划调整</button>
+            <div class="cg-subtle text-small" style="margin-top:8px">规划改变用途和容量，建筑会根据需求、信贷和公共服务逐步生长。</div>
+          </section>
+          <section class="cg-section">
+            <div class="cg-section-title">服务能力</div>
+            <div class="cg-bars">
+              ${barLine("教育", zone.services.education)}
+              ${barLine("医疗", zone.services.health)}
+              ${barLine("污水", zone.services.sewage)}
+              ${barLine("能源", zone.services.utilities)}
+              ${barLine("交通", zone.services.access)}
+            </div>
+          </section>
+          <section class="cg-section">
+            <div class="cg-section-title">任期综合评价</div>
+            <div class="cg-subtle text-small">当前专项任务：${state.activeTask.label}</div>
+            <div class="cg-bars" style="margin-top:8px">
+              ${barLine("经济", state.evaluationParts.economy)}
+              ${barLine("民生", state.evaluationParts.livelihood)}
+              ${barLine("财政", state.evaluationParts.risk)}
+              ${barLine("生态", state.evaluationParts.ecology)}
+              ${barLine("治理", state.evaluationParts.governance)}
+              ${barLine("任务", state.evaluationParts.task)}
+            </div>
+          </section>
+          <section class="cg-section">
+            <div class="cg-section-title">现有项目</div>
+            ${projects}
+          </section>`;
+      }
+
+      function renderPolicyPanel() {
+        const controls = Object.entries(POLICY_META).map(([key, meta]) => `
+          <div class="cg-field">
+            <div class="cg-field-head"><label class="form-label" for="cg-policy-${key}">${meta.label}</label><span class="cg-range-value text-small" data-policy-value="${key}">${Number(ui.policyDraft[key]).toFixed(meta.step < 1 ? 1 : 0)}${meta.unit}</span></div>
+            <input id="cg-policy-${key}" class="form-range" type="range" min="${meta.min}" max="${meta.max}" step="${meta.step}" value="${ui.policyDraft[key]}" data-policy="${key}">
+          </div>`).join("");
+        panelEl.innerHTML = `
+          <section class="cg-section">
+            <div class="cg-section-title">政策方案</div>
+            <div class="cg-subtle text-small">目标值不会立即生效，部门将根据执行能力逐周落实。大幅调整会消耗更多政治资本。</div>
+          </section>
+          <section class="cg-section">${controls}</section>
+          <section class="cg-section">
+            <div class="cg-field">
+              <label class="form-label" for="cg-transport-mode">交通建设导向</label>
+              <select id="cg-transport-mode" class="form-select" data-role="transport-mode">
+                <option value="balanced" ${ui.policyDraft.transportMode === "balanced" ? "selected" : ""}>综合平衡</option>
+                <option value="road" ${ui.policyDraft.transportMode === "road" ? "selected" : ""}>道路扩张</option>
+                <option value="transit" ${ui.policyDraft.transportMode === "transit" ? "selected" : ""}>公共交通优先</option>
+                <option value="freight" ${ui.policyDraft.transportMode === "freight" ? "selected" : ""}>工业货运优先</option>
+                <option value="green" ${ui.policyDraft.transportMode === "green" ? "selected" : ""}>绿色慢行导向</option>
+              </select>
+            </div>
+            <button type="button" class="btn btn-primary" data-action="apply-policy">提交政策方案</button>
+          </section>`;
+      }
+
+      function renderProjectsPanel() {
+        const zone = selectedZone();
+        const projectOptions = Object.entries(PROJECTS).map(([key, item]) => `<option value="${key}" ${ui.projectType === key ? "selected" : ""}>${item.label} · ${item.cost}亿元</option>`).join("");
+        const project = PROJECTS[ui.projectType];
+        panelEl.innerHTML = `
+          <section class="cg-section">
+            <div class="cg-section-title">${zone.name}</div>
+            <div class="cg-subtle text-small">政府项目需要建设时间，投用后仍产生维护或合同支出。</div>
+          </section>
+          <section class="cg-section">
+            <div class="cg-field">
+              <label class="form-label" for="cg-project-type">项目类型</label>
+              <select id="cg-project-type" class="form-select" data-role="project-type">${projectOptions}</select>
+            </div>
+            <div class="cg-field">
+              <label class="form-label" for="cg-project-mode">建设模式</label>
+              <select id="cg-project-mode" class="form-select" data-role="project-mode">
+                <option value="direct" ${ui.projectMode === "direct" ? "selected" : ""}>政府直接建设</option>
+                <option value="ppp" ${ui.projectMode === "ppp" ? "selected" : ""}>政企合作</option>
+                <option value="outsource" ${ui.projectMode === "outsource" ? "selected" : ""}>私人建设与服务采购</option>
+              </select>
+            </div>
+            <div class="cg-kv text-small">
+              <span>标准总投资</span><span>${project.cost}亿元</span>
+              <span>标准工期</span><span>${project.weeks}周</span>
+              <span>财政可用资金</span><span>${formatMoney(state.funds)}</span>
+            </div>
+            <button type="button" class="btn btn-primary" data-action="build-project">批准项目</button>
+          </section>
+          <section class="cg-section">
+            <div class="cg-section-title">模式差异</div>
+            <div class="cg-subtle text-small">直接建设财政支出清晰、控制力强；政企合作降低当期支出但形成长期义务；私人建设更快，却更加依赖监管与合同质量。</div>
+          </section>`;
+      }
+
+      function renderFinancePanel() {
+        const budget = state.lastBudget || { revenue: 0, expenditure: 0, taxRevenue: 0, landRevenue: 0, debtInterest: 0 };
+        const bankRows = state.banks.map(bank => `
+          <div class="cg-bank-row">
+            <div class="cg-row-head"><span>${bank.name}</span><span class="text-small">贷款利率 ${bank.loanRate.toFixed(1)}%</span></div>
+            <div class="cg-kv text-small">
+              <span>贷款余额</span><span>${bank.loans.toFixed(0)}亿</span>
+              <span>存款余额</span><span>${bank.deposits.toFixed(0)}亿</span>
+              <span>不良贷款率</span><span class="${bank.npl > 7 ? "cg-warning" : ""}">${bank.npl.toFixed(1)}%</span>
+              <span>银行资本</span><span>${bank.capital.toFixed(1)}亿</span>
+            </div>
+          </div>`).join("");
+        panelEl.innerHTML = `
+          <section class="cg-section">
+            <div class="cg-section-title">地方财政</div>
+            <div class="cg-kv text-small">
+              <span>财政资金</span><span>${formatMoney(state.funds)}</span>
+              <span>显性债务</span><span>${formatMoney(state.debt)}</span>
+              <span>估算隐性债务</span><span>${formatMoney(state.hiddenDebt)}</span>
+              <span>本周财政收入</span><span>${formatMoney(budget.revenue)}</span>
+              <span>本周财政支出</span><span>${formatMoney(budget.expenditure)}</span>
+              <span>其中土地收入</span><span>${formatMoney(budget.landRevenue)}</span>
+              <span>其中债务利息</span><span>${formatMoney(budget.debtInterest)}</span>
+            </div>
+          </section>
+          <section class="cg-section">
+            <div class="cg-section-title">银行体系</div>
+            ${bankRows}
+          </section>
+          <section class="cg-section">
+            <div class="cg-section-title">金融环境</div>
+            <div class="cg-kv text-small">
+              <span>政策利率</span><span>${state.policies.policyRate.toFixed(1)}%</span>
+              <span>信贷年化变化</span><span>${(state.creditGrowth || 0).toFixed(1)}%</span>
+              <span>通货膨胀</span><span>${state.inflation.toFixed(1)}%</span>
+            </div>
+          </section>`;
+      }
+
+      function renderCandidates(department) {
+        const candidates = state.candidatePools[department] || [];
+        if (!candidates.length) return "";
+        return `<div class="cg-section"><div class="cg-section-title">考察人选</div>${candidates.map((candidate, index) => `
+          <div class="cg-cadre-row">
+            <div class="cg-row-head"><span>${candidate.name}</span><button type="button" class="btn btn-ghost" data-action="appoint-candidate" data-department="${department}" data-candidate="${index}">任命</button></div>
+            <div class="cg-kv text-small"><span>专业能力</span><span>${candidate.ability.toFixed(0)}</span><span>廉洁程度</span><span>${candidate.integrity.toFixed(0)}</span><span>政策协同</span><span>${candidate.alignment.toFixed(0)}</span></div>
+          </div>`).join("")}</div>`;
+      }
+
+      function renderCadresPanel() {
+        const rows = state.cadres.map(cadre => `
+          <div class="cg-cadre-row">
+            <div class="cg-row-head"><span>${cadre.departmentLabel}</span><span>${cadre.name}</span></div>
+            <div class="cg-bars">
+              ${barLine("能力", cadre.ability)}
+              ${barLine("廉洁", cadre.integrity)}
+              ${barLine("协同", cadre.alignment)}
+            </div>
+            <div class="cg-inline-actions"><button type="button" class="btn btn-ghost" data-action="search-candidates" data-department="${cadre.department}">考察替换人选</button></div>
+          </div>`).join("");
+        const activeCandidateDepartment = Object.keys(state.candidatePools).find(key => state.candidatePools[key]?.length);
+        panelEl.innerHTML = `
+          <section class="cg-section">
+            <div class="cg-section-title">市委班子与部门执行</div>
+            <div class="cg-kv text-small"><span>政治资本</span><span>${state.politicalCapital.toFixed(0)}</span><span>廉政风险</span><span>${state.corruptionRisk.toFixed(1)}</span><span>统计可靠度</span><span>${state.dataReliability.toFixed(0)}</span></div>
+          </section>
+          <section class="cg-section">${rows}</section>
+          ${activeCandidateDepartment ? renderCandidates(activeCandidateDepartment) : ""}`;
+      }
+
+      function renderPanel() {
+        root.querySelectorAll("[data-tab]").forEach(button => button.setAttribute("aria-pressed", button.dataset.tab === ui.activeTab ? "true" : "false"));
+        if (ui.activeTab === "policy") renderPolicyPanel();
+        else if (ui.activeTab === "projects") renderProjectsPanel();
+        else if (ui.activeTab === "finance") renderFinancePanel();
+        else if (ui.activeTab === "cadres") renderCadresPanel();
+        else renderPlanningPanel();
+      }
+
+      function evaluationLabel(score) {
+        if (score >= 82) return "优秀";
+        if (score >= 70) return "良好";
+        if (score >= 58) return "合格";
+        if (score >= 45) return "承压";
+        return "危机";
+      }
+
+      function renderHeader() {
+        const termWeek = state.week % state.termLength;
+        const year = Math.min(5, Math.floor(termWeek / 52) + 1);
+        const weekInYear = termWeek % 52 + 1;
+        root.querySelector('[data-bind="city-name"]').textContent = `${state.cityName} · 第${state.term}届任期`;
+        canvas.setAttribute("aria-label", `${state.cityName}市域规划地图，可拖动、滚轮缩放并选择区块`);
+        root.querySelector('[data-bind="period"]').textContent = state.termEnded ? "任期考核已完成" : `第${year}年 · 第${weekInYear}周`;
+        root.querySelector('[data-bind="population"]').textContent = formatPopulation(state.population);
+        root.querySelector('[data-bind="gdp"]').textContent = `${state.annualGDP.toFixed(0)}亿元`;
+        root.querySelector('[data-bind="funds"]').textContent = formatMoney(state.funds);
+        root.querySelector('[data-bind="unemployment"]').textContent = formatPercent(state.unemployment);
+        root.querySelector('[data-bind="evaluation"]').textContent = `${state.evaluation.toFixed(0)} · ${evaluationLabel(state.evaluation)}`;
+        const runButton = root.querySelector('[data-action="toggle-run"]');
+        runButton.setAttribute("aria-pressed", state.running ? "true" : "false");
+        root.querySelector('[data-bind="run-label"]').textContent = state.termEnded ? "开启下一任期" : state.running ? "暂停" : "开始运行";
+        runButton.querySelector("i")?.setAttribute("data-lucide", state.running ? "pause" : state.termEnded ? "arrow-right" : "play");
+        root.querySelectorAll('[data-action="speed"]').forEach(button => button.setAttribute("aria-pressed", Number(button.dataset.speed) === state.speed ? "true" : "false"));
+      }
+
+      function renderMapStatus() {
+        const zone = selectedZone();
+        statusEl.innerHTML = `<strong>${zone.name} · ${USES[zone.use].label}</strong><span>${formatPopulation(zone.population)}人 · ${formatPopulation(zone.jobs)}个岗位 · 开发${(zone.development * 100).toFixed(0)}%</span>`;
+        const legends = ui.overlay === "use" ? Object.entries(USES).slice(0, 6).map(([key, item]) => `<span class="cg-legend-item"><span class="cg-swatch" style="--swatch:var(--viz-series-${item.series})"></span>${item.label}</span>`).join("") : `<span class="cg-legend-item"><span class="cg-swatch" style="--swatch:var(--viz-series-${ui.overlay === "pollution" ? 3 : ui.overlay === "services" ? 2 : 1})"></span>颜色越深，${ui.overlay === "population" ? "人口密度" : ui.overlay === "economy" ? "经济活力" : ui.overlay === "pollution" ? "环境压力" : "服务能力"}越高</span>`;
+        legendEl.innerHTML = legends;
+      }
+
+      function renderEvents() {
+        eventsEl.innerHTML = state.events.slice(0, 3).map(event => `<div class="cg-event-row">第${event.week + 1}周 · ${event.text}</div>`).join("");
+      }
+
+      function renderAll() {
+        renderHeader();
+        renderMapStatus();
+        renderEvents();
+        renderPanel();
+        if (window.lucide) window.lucide.createIcons({ attrs: { width: 16, height: 16 } });
+        ui.dirtyMap = true;
+      }
+
+      function showToast(message) {
+        toastEl.textContent = message;
+        toastEl.classList.add("is-visible");
+        if (ui.toastTimer) clearTimeout(ui.toastTimer);
+        ui.toastTimer = setTimeout(() => toastEl.classList.remove("is-visible"), 2200);
+      }
+
+      function applyPlan() {
+        const zone = selectedZone();
+        const useSelect = panelEl.querySelector('[data-role="zone-use"]');
+        const intensityInput = panelEl.querySelector('[data-role="zone-intensity"]');
+        if (!useSelect || !intensityInput) return;
+        const newUse = useSelect.value;
+        const newIntensity = Number(intensityInput.value);
+        const changed = newUse !== zone.use || newIntensity !== zone.intensity;
+        if (!changed) {
+          showToast("规划方案没有变化");
+          return;
+        }
+        const capitalCost = 2 + Math.abs(newIntensity - zone.intensity) * 0.7 + (newUse !== zone.use ? 1.5 : 0);
+        if (state.politicalCapital < capitalCost) {
+          showToast("政治资本不足，规划调整未获通过");
+          return;
+        }
+        const oldUse = USES[zone.use].label;
+        state.politicalCapital -= capitalCost;
+        state.funds -= 0.35 + zone.area * 0.006;
+        zone.use = newUse;
+        zone.intensity = newIntensity;
+        zone.housingCapacity = zone.area * 4200 * zone.intensity * USES[zone.use].housing * Math.max(0.35, zone.development);
+        addEvent(`${zone.name}由“${oldUse}”调整为“${USES[newUse].label}”，开发强度设为${newIntensity}级。`);
+        renderAll();
+        showToast("规划方案已批准，市场将逐步响应");
+      }
+
+      function policyChangeCost() {
+        let cost = 1.5;
+        for (const [key, meta] of Object.entries(POLICY_META)) {
+          cost += Math.abs(Number(ui.policyDraft[key]) - Number(state.policyTargets[key])) / Math.max(1, meta.max - meta.min) * 8;
+        }
+        if (ui.policyDraft.transportMode !== state.policyTargets.transportMode) cost += 1.2;
+        return cost;
+      }
+
+      function applyPolicy() {
+        const transport = panelEl.querySelector('[data-role="transport-mode"]');
+        if (transport) ui.policyDraft.transportMode = transport.value;
+        const cost = policyChangeCost();
+        if (state.politicalCapital < cost) {
+          showToast(`需要${cost.toFixed(1)}点政治资本，当前不足`);
+          return;
+        }
+        state.politicalCapital -= cost;
+        state.policyTargets = { ...ui.policyDraft };
+        addEvent(`市委常委会通过新一期经济与社会政策方案，预计需要数周逐步落实。`);
+        renderAll();
+        showToast(`政策方案已提交，消耗${cost.toFixed(1)}点政治资本`);
+      }
+
+      function buildProject() {
+        const zone = selectedZone();
+        const projectType = panelEl.querySelector('[data-role="project-type"]')?.value || ui.projectType;
+        const mode = panelEl.querySelector('[data-role="project-mode"]')?.value || ui.projectMode;
+        const definition = PROJECTS[projectType];
+        if (!definition) return;
+        const modeConfig = {
+          direct: { upfront: 1, duration: 1, quality: 1, longTerm: 0 },
+          ppp: { upfront: 0.28, duration: 0.78, quality: 0.9, longTerm: 1.16 },
+          outsource: { upfront: 0.12, duration: 0.62, quality: 0.78, longTerm: 1.38 }
+        }[mode];
+        const upfront = definition.cost * modeConfig.upfront;
+        if (state.funds < upfront + 8) {
+          showToast(`至少需要保留8亿元周转资金，目前无法支付${upfront.toFixed(1)}亿元首期款`);
+          return;
+        }
+        state.funds -= upfront;
+        const department = ["school", "hospital"].includes(projectType) ? "social" : projectType === "sewage" ? "environment" : "housing";
+        const project = {
+          id: ++state.projectSerial,
+          type: projectType,
+          label: definition.label,
+          mode,
+          department,
+          status: "building",
+          progress: 0,
+          duration: Math.round(definition.weeks * modeConfig.duration),
+          delay: 0,
+          quality: modeConfig.quality,
+          service: definition.service,
+          capacity: definition.capacity,
+          totalCost: definition.cost
+        };
+        zone.projects.push(project);
+        if (mode !== "direct") {
+          const obligationTotal = definition.cost * modeConfig.longTerm - upfront;
+          const remaining = mode === "ppp" ? 260 : 208;
+          state.pppObligations.push({ projectId: project.id, weekly: obligationTotal / remaining, remaining });
+          state.hiddenDebt += obligationTotal * (mode === "ppp" ? 0.72 : 0.46);
+          state.corruptionRisk = clamp(state.corruptionRisk + (mode === "ppp" ? 0.9 : 1.4), 0, 100);
+        }
+        addEvent(`${zone.name}${definition.label}获批，采用${mode === "direct" ? "政府直接建设" : mode === "ppp" ? "政企合作" : "私人建设与服务采购"}模式。`);
+        ui.projectType = projectType;
+        ui.projectMode = mode;
+        renderAll();
+        showToast("项目已批准并进入建设阶段");
+      }
+
+      function searchCandidates(department) {
+        if (state.politicalCapital < 2) {
+          showToast("政治资本不足，暂时无法启动干部考察");
+          return;
+        }
+        state.politicalCapital -= 2;
+        const rng = new RNG(state.rngState);
+        const departmentMeta = DEPARTMENTS.find(item => item.id === department);
+        state.candidatePools = {};
+        state.candidatePools[department] = [0, 1, 2].map(() => createCadre(rng, departmentMeta));
+        state.rngState = rng.state;
+        renderPanel();
+      }
+
+      function appointCandidate(department, index) {
+        const candidates = state.candidatePools[department];
+        const candidate = candidates?.[index];
+        if (!candidate) return;
+        if (state.politicalCapital < 7) {
+          showToast("完成任命需要7点政治资本");
+          return;
+        }
+        state.politicalCapital -= 7;
+        const position = state.cadres.findIndex(cadre => cadre.department === department);
+        const former = state.cadres[position];
+        state.cadres[position] = candidate;
+        state.candidatePools = {};
+        addEvent(`${candidate.name}接任${candidate.departmentLabel}负责人，${former.name}调整岗位。`);
+        updateEvaluation(state);
+        renderAll();
+        showToast("干部任命已经完成");
+      }
+
+      function continueTerm() {
+        state.term += 1;
+        state.termEnded = false;
+        state.baselineGDP = state.annualGDP;
+        state.previousAnnualGDP = state.annualGDP;
+        state.politicalCapital = clamp(state.politicalCapital + 18, 0, 100);
+        state.activeTask = state.term % 3 === 0
+          ? { label: "控制地方债务与金融风险", metric: "risk", target: 70, progress: state.evaluationParts.risk }
+          : state.term % 2 === 0
+            ? { label: "提升公共服务均等化水平", metric: "livelihood", target: 72, progress: state.evaluationParts.livelihood }
+            : { label: "推进传统制造业技术改造", metric: "technology", target: 18, progress: 6 };
+        addEvent(`第${state.term}届任期开始，上级考核重点调整为“${state.activeTask.label}”。`);
+        renderAll();
+      }
+
+      function openDatabase() {
+        return new Promise((resolve, reject) => {
+          if (!window.indexedDB) {
+            reject(new Error("IndexedDB unavailable"));
+            return;
+          }
+          const request = indexedDB.open("city-governance-sim", 1);
+          request.onupgradeneeded = () => {
+            if (!request.result.objectStoreNames.contains("saves")) request.result.createObjectStore("saves");
+          };
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+      }
+
+      async function saveGame() {
+        try {
+          const db = await openDatabase();
+          await new Promise((resolve, reject) => {
+            const transaction = db.transaction("saves", "readwrite");
+            transaction.objectStore("saves").put(state, "slot-1");
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = () => reject(transaction.error);
+          });
+          db.close();
+          showToast("当前任期已保存");
+        } catch (error) {
+          showToast("保存失败，浏览器可能限制了本地存储");
+        }
+      }
+
+      async function loadGame() {
+        try {
+          const db = await openDatabase();
+          const loaded = await new Promise((resolve, reject) => {
+            const transaction = db.transaction("saves", "readonly");
+            const request = transaction.objectStore("saves").get("slot-1");
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+          });
+          db.close();
+          if (!loaded || loaded.version !== 1) {
+            showToast("没有找到可读取的第一版存档");
+            return;
+          }
+          state = loaded;
+          state.running = false;
+          ui.selectedZoneId = state.map.centerZoneId;
+          ui.policyDraft = { ...state.policyTargets };
+          ui.view.initialized = false;
+          resetView();
+          renderAll();
+          showToast("存档已读取");
+        } catch (error) {
+          showToast("读取失败，存档可能不可用");
+        }
+      }
+
+      function createNewCity() {
+        if (!window.confirm("生成新城市将替换当前未保存的进度，是否继续？")) return;
+        state = createState((Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0);
+        ui.selectedZoneId = state.map.centerZoneId;
+        ui.policyDraft = { ...state.policyTargets };
+        ui.activeTab = "planning";
+        ui.view.initialized = false;
+        resetView();
+        renderAll();
+        showToast("新的内陆制造业城市已经生成");
+      }
+
+      function selectMapPoint(clientX, clientY) {
+        const rect = canvas.getBoundingClientRect();
+        const worldX = (clientX - rect.left - ui.view.x) / ui.view.scale;
+        const worldY = (clientY - rect.top - ui.view.y) / ui.view.scale;
+        const cell = state.map.cells.find(item => pointInPolygon(worldX, worldY, item.polygon));
+        if (!cell || cell.water || cell.zoneId < 0) return;
+        ui.selectedZoneId = cell.zoneId;
+        ui.activeTab = "planning";
+        ui.dirtyMap = true;
+        renderAll();
+      }
+
+      root.addEventListener("click", event => {
+        const tab = event.target.closest("[data-tab]");
+        if (tab) {
+          ui.activeTab = tab.dataset.tab;
+          if (ui.activeTab === "policy") ui.policyDraft = { ...state.policyTargets };
+          renderPanel();
+          return;
+        }
+        const button = event.target.closest("[data-action]");
+        if (!button) return;
+        const action = button.dataset.action;
+        if (action === "toggle-run") {
+          if (state.termEnded) continueTerm();
+          else state.running = !state.running;
+          renderHeader();
+        } else if (action === "speed") {
+          state.speed = Number(button.dataset.speed);
+          renderHeader();
+        } else if (action === "reset-view") resetView();
+        else if (action === "new-city") createNewCity();
+        else if (action === "save") saveGame();
+        else if (action === "load") loadGame();
+        else if (action === "apply-plan") applyPlan();
+        else if (action === "apply-policy") applyPolicy();
+        else if (action === "build-project") buildProject();
+        else if (action === "search-candidates") searchCandidates(button.dataset.department);
+        else if (action === "appoint-candidate") appointCandidate(button.dataset.department, Number(button.dataset.candidate));
+      });
+
+      root.addEventListener("input", event => {
+        const policy = event.target.dataset.policy;
+        if (policy) {
+          ui.policyDraft[policy] = Number(event.target.value);
+          const meta = POLICY_META[policy];
+          const label = panelEl.querySelector(`[data-policy-value="${policy}"]`);
+          if (label) label.textContent = `${Number(event.target.value).toFixed(meta.step < 1 ? 1 : 0)}${meta.unit}`;
+        }
+        if (event.target.matches('[data-role="zone-intensity"]')) {
+          const label = panelEl.querySelector('[data-bind="zone-intensity-value"]');
+          if (label) label.textContent = `${event.target.value}级`;
+        }
+      });
+
+      root.addEventListener("change", event => {
+        if (event.target.matches('[data-action="overlay"]')) {
+          ui.overlay = event.target.value;
+          ui.dirtyMap = true;
+          renderMapStatus();
+        } else if (event.target.matches('[data-role="project-type"]')) {
+          ui.projectType = event.target.value;
+          renderProjectsPanel();
+        } else if (event.target.matches('[data-role="project-mode"]')) {
+          ui.projectMode = event.target.value;
+        } else if (event.target.matches('[data-role="transport-mode"]')) {
+          ui.policyDraft.transportMode = event.target.value;
+        }
+      });
+
+      function pointerPair() {
+        return [...ui.pointers.values()].slice(0, 2);
+      }
+
+      function pointerMidpoint(points) {
+        return { x: (points[0].x + points[1].x) / 2, y: (points[0].y + points[1].y) / 2 };
+      }
+
+      function pointerDistance(points) {
+        return Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
+      }
+
+      canvas.addEventListener("pointerdown", event => {
+        canvas.setPointerCapture(event.pointerId);
+        ui.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        if (ui.pointers.size === 1) {
+          ui.dragging = true;
+          ui.pointerStart = { x: event.clientX, y: event.clientY };
+          ui.lastPointer = { x: event.clientX, y: event.clientY };
+          ui.pinch = null;
+        } else if (ui.pointers.size === 2) {
+          const points = pointerPair();
+          const midpoint = pointerMidpoint(points);
+          const rect = canvas.getBoundingClientRect();
+          ui.dragging = false;
+          ui.pinch = {
+            distance: Math.max(1, pointerDistance(points)),
+            scale: ui.view.scale,
+            worldX: (midpoint.x - rect.left - ui.view.x) / ui.view.scale,
+            worldY: (midpoint.y - rect.top - ui.view.y) / ui.view.scale
+          };
+        }
+      });
+
+      canvas.addEventListener("pointermove", event => {
+        if (!ui.pointers.has(event.pointerId)) return;
+        ui.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        if (ui.pointers.size >= 2 && ui.pinch) {
+          const points = pointerPair();
+          const midpoint = pointerMidpoint(points);
+          const rect = canvas.getBoundingClientRect();
+          const nextScale = clamp(ui.pinch.scale * pointerDistance(points) / ui.pinch.distance, 0.32, 3.4);
+          ui.view.x = midpoint.x - rect.left - ui.pinch.worldX * nextScale;
+          ui.view.y = midpoint.y - rect.top - ui.pinch.worldY * nextScale;
+          ui.view.scale = nextScale;
+          ui.dirtyMap = true;
+          return;
+        }
+        if (!ui.dragging || !ui.lastPointer) return;
+        const dx = event.clientX - ui.lastPointer.x;
+        const dy = event.clientY - ui.lastPointer.y;
+        ui.view.x += dx;
+        ui.view.y += dy;
+        ui.lastPointer = { x: event.clientX, y: event.clientY };
+        ui.dirtyMap = true;
+      });
+
+      function releasePointer(event, allowSelection) {
+        const wasSingle = ui.pointers.size === 1;
+        const moved = ui.pointerStart ? Math.hypot(event.clientX - ui.pointerStart.x, event.clientY - ui.pointerStart.y) : Infinity;
+        ui.pointers.delete(event.pointerId);
+        if (allowSelection && wasSingle && moved < 8) selectMapPoint(event.clientX, event.clientY);
+        if (ui.pointers.size === 1) {
+          const remaining = [...ui.pointers.values()][0];
+          ui.dragging = true;
+          ui.pointerStart = { ...remaining };
+          ui.lastPointer = { ...remaining };
+        } else {
+          ui.dragging = false;
+          ui.pointerStart = null;
+          ui.lastPointer = null;
+        }
+        ui.pinch = null;
+      }
+
+      canvas.addEventListener("pointerup", event => releasePointer(event, true));
+      canvas.addEventListener("pointercancel", event => releasePointer(event, false));
+
+      canvas.addEventListener("wheel", event => {
+        event.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = event.clientX - rect.left;
+        const mouseY = event.clientY - rect.top;
+        const worldX = (mouseX - ui.view.x) / ui.view.scale;
+        const worldY = (mouseY - ui.view.y) / ui.view.scale;
+        const nextScale = clamp(ui.view.scale * Math.exp(-event.deltaY * 0.0011), 0.32, 3.4);
+        ui.view.x = mouseX - worldX * nextScale;
+        ui.view.y = mouseY - worldY * nextScale;
+        ui.view.scale = nextScale;
+        ui.dirtyMap = true;
+      }, { passive: false });
+
+      const resizeObserver = new ResizeObserver(() => {
+        resizeCanvas();
+        ui.dirtyMap = true;
+      });
+      resizeObserver.observe(canvas.parentElement);
+
+      function animationFrame(now) {
+        const elapsed = Math.min(250, now - ui.lastTime);
+        ui.lastTime = now;
+        let advanced = false;
+        if (state.running && !state.termEnded) {
+          ui.accumulator += elapsed / 1000 * state.speed;
+          let safety = 0;
+          while (ui.accumulator >= 1 && safety < 8) {
+            tickWeek();
+            ui.accumulator -= 1;
+            safety += 1;
+            advanced = true;
+          }
+        }
+        if (advanced) renderAll();
+        drawMap();
+        requestAnimationFrame(animationFrame);
+      }
+
+      resetView();
+      renderAll();
+      requestAnimationFrame(animationFrame);
+
+    })();
+  </script>
+</div>
+
+<script id="codex-visualization-floating-ui-core" src="https://unpkg.com/@floating-ui/core@1.7.3/dist/floating-ui.core.umd.min.js"></script>
+<script id="codex-visualization-floating-ui-dom" src="https://unpkg.com/@floating-ui/dom@1.7.4/dist/floating-ui.dom.umd.min.js"></script>
+<script id="codex-visualization-lucide" async src="https://unpkg.com/lucide@1.17.0/dist/umd/lucide.js"></script>
+<script id="codex-visualization-tooltip">/* oxlint-disable typescript/no-unsafe-argument, typescript/no-unsafe-call, typescript/no-unsafe-return */
+// Runs inside the visualization sandbox, not the host webview.
+(() => {
+  if (window.FloatingUIDOM == null) {
+    return;
+  }
+  const { autoUpdate, computePosition, flip, offset, shift, size } =
+    window.FloatingUIDOM;
+  const tooltipPlacements = new Set(["top", "right", "bottom", "left"]);
+  const tooltipId = `codex-visualization-tooltip-${
+    window.crypto?.randomUUID?.() ?? Date.now().toString(36)
+  }`;
+  const tooltipGap = 5;
+  const hoverDelay = 700;
+  const skipDelay = 300;
+  let activeTrigger = null;
+  let pendingTrigger = null;
+  let tooltip = null;
+  let openTimeout = null;
+  let autoUpdateCleanup = null;
+  let positionRequest = 0;
+  let skipDelayUntil = 0;
+
+  const getTrigger = (target) =>
+    target?.nodeType === Node.ELEMENT_NODE
+      ? target.closest("[data-tooltip]")
+      : null;
+  const containsTarget = (trigger, target) =>
+    target?.nodeType != null && trigger.contains(target);
+  const getContent = (trigger) =>
+    trigger.getAttribute("data-tooltip")?.trim() ?? "";
+  const getPlacement = (trigger) => {
+    const placement = trigger.getAttribute("data-tooltip-placement");
+    return tooltipPlacements.has(placement) ? placement : "top";
+  };
+  const getTooltip = () => {
+    if (tooltip == null) {
+      tooltip = document.createElement("div");
+      tooltip.id = tooltipId;
+      tooltip.className = "tooltip";
+      tooltip.setAttribute("role", "tooltip");
+    }
+    return tooltip;
+  };
+  const setDescribedBy = (trigger, described) => {
+    const ids = new Set(
+      (trigger.getAttribute("aria-describedby") ?? "")
+        .split(/\s+/)
+        .filter(Boolean),
+    );
+    if (described) {
+      ids.add(tooltipId);
+    } else {
+      ids.delete(tooltipId);
+    }
+    if (ids.size === 0) {
+      trigger.removeAttribute("aria-describedby");
+    } else {
+      trigger.setAttribute("aria-describedby", [...ids].join(" "));
+    }
+  };
+  const clearOpenTimeout = () => {
+    if (openTimeout != null) {
+      window.clearTimeout(openTimeout);
+      openTimeout = null;
+    }
+    pendingTrigger = null;
+  };
+  const closeTooltip = (activateSkipDelay = true) => {
+    clearOpenTimeout();
+    positionRequest += 1;
+    autoUpdateCleanup?.();
+    autoUpdateCleanup = null;
+    if (activeTrigger == null) {
+      return;
+    }
+    setDescribedBy(activeTrigger, false);
+    activeTrigger = null;
+    tooltip?.remove();
+    if (activateSkipDelay) {
+      skipDelayUntil = Date.now() + skipDelay;
+    }
+  };
+  const updatePosition = (trigger, floating) => {
+    const request = ++positionRequest;
+    void computePosition(trigger, floating, {
+      middleware: [
+        offset(tooltipGap),
+        flip({ padding: tooltipGap }),
+        shift({ padding: tooltipGap }),
+        size({
+          padding: tooltipGap,
+          apply({ availableHeight, availableWidth, elements }) {
+            elements.floating.style.setProperty(
+              "--tooltip-available-width",
+              `${Math.max(0, availableWidth)}px`,
+            );
+            elements.floating.style.setProperty(
+              "--tooltip-available-height",
+              `${Math.max(0, availableHeight)}px`,
+            );
+          },
+        }),
+      ],
+      placement: getPlacement(trigger),
+      strategy: "fixed",
+    })
+      .then(({ x, y }) => {
+        if (activeTrigger !== trigger || request !== positionRequest) {
+          return;
+        }
+        const scale = window.devicePixelRatio || 1;
+        floating.style.transform = `translate(${Math.round(x * scale) / scale}px, ${Math.round(y * scale) / scale}px)`;
+        floating.style.visibility = "visible";
+      })
+      .catch(() => {
+        if (activeTrigger === trigger && request === positionRequest) {
+          closeTooltip(false);
+        }
+      });
+  };
+  const openTooltip = (trigger) => {
+    const content = getContent(trigger);
+    if (!trigger.isConnected || content.length === 0) {
+      return;
+    }
+    clearOpenTimeout();
+    if (activeTrigger === trigger) {
+      return;
+    }
+    closeTooltip();
+    const floating = getTooltip();
+    floating.textContent = content;
+    floating.style.visibility = "hidden";
+    floating.style.transform = "translate(0, 0)";
+    document.body.appendChild(floating);
+    activeTrigger = trigger;
+    setDescribedBy(trigger, true);
+    autoUpdateCleanup = autoUpdate(trigger, floating, () => {
+      updatePosition(trigger, floating);
+    });
+  };
+  const requestOpen = (trigger, immediate = false) => {
+    if (
+      getContent(trigger).length === 0 ||
+      activeTrigger === trigger ||
+      pendingTrigger === trigger
+    ) {
+      return;
+    }
+    clearOpenTimeout();
+    pendingTrigger = trigger;
+    const delay =
+      immediate || activeTrigger != null || Date.now() < skipDelayUntil
+        ? 0
+        : hoverDelay;
+    if (delay === 0) {
+      openTooltip(trigger);
+      return;
+    }
+    openTimeout = window.setTimeout(() => {
+      openTimeout = null;
+      pendingTrigger = null;
+      openTooltip(trigger);
+    }, delay);
+  };
+  const handlePointerOpen = (event) => {
+    if (event.pointerType === "touch") {
+      return;
+    }
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    requestOpen(trigger);
+  };
+  const handleLeave = (event) => {
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const handleFocusIn = (event) => {
+    const trigger = getTrigger(event.target);
+    if (trigger?.matches(":focus-visible")) {
+      requestOpen(trigger, true);
+    }
+  };
+  const handleKeyDown = (event) => {
+    if (event.key === "Escape") {
+      closeTooltip();
+    }
+  };
+  const handleContextMenu = (event) => {
+    const trigger = getTrigger(event.target);
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const destroy = () => {
+    closeTooltip(false);
+    document.removeEventListener("pointerover", handlePointerOpen);
+    document.removeEventListener("pointerout", handleLeave);
+    document.removeEventListener("focusin", handleFocusIn);
+    document.removeEventListener("focusout", handleLeave);
+    document.removeEventListener("keydown", handleKeyDown);
+    document.removeEventListener("contextmenu", handleContextMenu);
+    tooltip = null;
+  };
+
+  document.addEventListener("pointerover", handlePointerOpen);
+  document.addEventListener("pointerout", handleLeave);
+  document.addEventListener("focusin", handleFocusIn);
+  document.addEventListener("focusout", handleLeave);
+  document.addEventListener("keydown", handleKeyDown);
+  document.addEventListener("contextmenu", handleContextMenu);
+  window.addEventListener("pagehide", destroy, { once: true });
+})();
+</script>
+<script id="codex-visualization-lucide-initialization">(() => {
+  const initialize = () => {
+    globalThis.lucide?.createIcons({ attrs: { width: 16, height: 16 } });
+  };
+  if (globalThis.lucide != null) {
+    initialize();
+    return;
+  }
+  document
+    .getElementById("codex-visualization-lucide")
+    ?.addEventListener("load", initialize, { once: true });
+})();
+</script>
+<script>
+if ("serviceWorker" in navigator && location.protocol !== "file:") {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./service-worker.js", { scope: "./" }).catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
